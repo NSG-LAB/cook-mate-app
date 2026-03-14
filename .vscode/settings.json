@@ -1,0 +1,41 @@
+{
+    "java.compile.nullAnalysis.mode": "automatic",
+    "java.configuration.updateBuildConfiguration": "interactive",
+    "java.autobuild.enabled": true,
+    "java.errors.incompleteClasspath.severity": "warning",
+    "java.import.gradle.enabled": false,
+    "java.import.exclusions": [
+        "frontend/**",
+        "**/frontend/**",
+        "**/node_modules/**",
+        "**/frontend/node_modules/**",
+        "**/frontend/android/build/**",
+        "**/frontend/android/app/build/**"
+    ],
+    "java.project.resourceFilters": [
+        "node_modules",
+        ".git",
+        "__CREATED_BY_JAVA_LANGUAGE_SERVER__",
+        ".metadata",
+        "build"
+    ],
+    "files.watcherExclude": {
+        "**/frontend/node_modules/**": true,
+        "**/frontend/android/build/**": true,
+        "**/frontend/android/app/build/**": true
+    },
+    "search.exclude": {
+        "**/frontend/node_modules/**": true,
+        "**/frontend/android/build/**": true,
+        "**/frontend/android/app/build/**": true
+    },
+    "files.exclude": {
+        "**/frontend/node_modules/**": true,
+        "**/frontend/android/build/**": true,
+        "**/frontend/android/app/build/**": true
+    },
+    "files.associations": {
+        "frontend/node_modules/**/*.java": "plaintext",
+        "**/frontend/node_modules/**/*.java": "plaintext"
+    }
+}

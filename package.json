@@ -1,0 +1,12 @@
+{
+  "name": "cookmate-student-workspace",
+  "private": true,
+  "scripts": {
+    "start": "npm --prefix frontend run start",
+    "frontend:start": "npm --prefix frontend run start",
+    "backend:start": "mvn -f backend/pom.xml spring-boot:run"
+  },
+  "dependencies": {
+    "expo": "^55.0.6"
+  }
+}
