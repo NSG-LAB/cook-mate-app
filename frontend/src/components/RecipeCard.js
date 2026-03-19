@@ -9,10 +9,13 @@ export default function RecipeCard({ recipe, onPress, onToggleSelect, selected }
       <Image source={{ uri: recipe.imageUrl }} style={styles.image} />
       <View style={styles.content}>
         <Text style={styles.title}>{recipe.title}</Text>
+        <View style={styles.badgesRow}>
+          <Text style={styles.badge}>{(recipe.difficulty || 'easy').toUpperCase()}</Text>
+        </View>
         <View style={styles.metaRow}>
           <View style={styles.metaChip}>
             <Ionicons name="time-outline" size={16} color={palette.primaryDark} />
-            <Text style={styles.metaText}>{recipe.cookTimeMinutes}m</Text>
+            <Text style={styles.metaText}>{recipe.prepTimeMinutes ?? 5}+{recipe.cookTimeMinutes}m</Text>
           </View>
           <View style={styles.metaChip}>
             <Ionicons name="wallet-outline" size={16} color={palette.primaryDark} />
@@ -54,6 +57,8 @@ const styles = StyleSheet.create({
   image: { width: '100%', height: 160 },
   content: { padding: 12 },
   title: { fontSize: 16, fontWeight: '700', color: palette.text, marginBottom: 4 },
+  badgesRow: { flexDirection: 'row', marginBottom: 8 },
+  badge: { backgroundColor: '#DBF3E5', color: '#1E7A44', fontWeight: '700', fontSize: 11, paddingHorizontal: 8, paddingVertical: 4, borderRadius: 999 },
   metaRow: { flexDirection: 'row', flexWrap: 'wrap', marginBottom: 8 },
   metaChip: {
     flexDirection: 'row',

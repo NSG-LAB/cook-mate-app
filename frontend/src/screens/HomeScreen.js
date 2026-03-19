@@ -86,6 +86,10 @@ export default function HomeScreen({ navigation }) {
         {loading ? <ActivityIndicator color="#fff" /> : <Ionicons name="flash-outline" size={20} color="#fff" />}
         <Text style={styles.quickBtnText}>{loading ? 'Loading...' : 'Suggest 10-minute recipe'}</Text>
       </TouchableOpacity>
+      <TouchableOpacity style={styles.createBtn} onPress={() => navigation.navigate('RecipeEditor')}>
+        <Ionicons name="add-circle-outline" size={20} color="#fff" />
+        <Text style={styles.createBtnText}>Create Recipe Submission</Text>
+      </TouchableOpacity>
       {error ? <Text style={styles.errorText}>{error}</Text> : null}
 
       <FlatList
@@ -156,6 +160,16 @@ const styles = StyleSheet.create({
   },
   quickBtnText: { color: '#fff', fontWeight: '700', marginLeft: 8 },
   disabledBtn: { opacity: 0.7 },
+  createBtn: {
+    backgroundColor: '#1D4ED8',
+    padding: 12,
+    borderRadius: 12,
+    marginBottom: 12,
+    alignItems: 'center',
+    flexDirection: 'row',
+    justifyContent: 'center',
+  },
+  createBtnText: { color: '#fff', fontWeight: '700', marginLeft: 8 },
   errorText: { color: '#E74C3C', marginBottom: 8, textAlign: 'center' },
   emptyText: { color: palette.text, textAlign: 'center', marginTop: 20 },
 });

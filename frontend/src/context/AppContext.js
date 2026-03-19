@@ -9,6 +9,7 @@ const AUTH_USER_KEY = 'authUser';
 const INGREDIENTS_KEY = 'appIngredients';
 const BUDGET_KEY = 'appBudget';
 const SELECTED_RECIPES_KEY = 'appSelectedRecipes';
+const COOKED_RECIPES_KEY = 'appCookedRecipes';
 const DARK_MODE_KEY = 'appDarkMode';
 const STREAK_KEY = 'appStreak';
 
@@ -19,6 +20,7 @@ export const AppProvider = ({ children }) => {
   const [budget, setBudget] = useState(1200);
   const [ingredients, setIngredients] = useState([]);
   const [selectedRecipeIds, setSelectedRecipeIds] = useState([]);
+  const [cookedRecipeIds, setCookedRecipeIds] = useState([]);
   const [darkMode, setDarkMode] = useState(false);
   const [streak, setStreak] = useState(0);
   const [axiosInterceptorId, setAxiosInterceptorId] = useState(null);
@@ -26,12 +28,13 @@ export const AppProvider = ({ children }) => {
   useEffect(() => {
     const restoreSession = async () => {
       try {
-        const [storedToken, storedUser, storedIngredients, storedBudget, storedSelected, storedDarkMode, storedStreak] = await Promise.all([
+        const [storedToken, storedUser, storedIngredients, storedBudget, storedSelected, storedCooked, storedDarkMode, storedStreak] = await Promise.all([
           AsyncStorage.getItem(AUTH_TOKEN_KEY),
           AsyncStorage.getItem(AUTH_USER_KEY),
           AsyncStorage.getItem(INGREDIENTS_KEY),
           AsyncStorage.getItem(BUDGET_KEY),
           AsyncStorage.getItem(SELECTED_RECIPES_KEY),
+          AsyncStorage.getItem(COOKED_RECIPES_KEY),
           AsyncStorage.getItem(DARK_MODE_KEY),
           AsyncStorage.getItem(STREAK_KEY),
         ]);
@@ -69,6 +72,17 @@ export const AppProvider = ({ children }) => {
             const parsedSelected = JSON.parse(storedSelected);
             if (Array.isArray(parsedSelected)) {
               setSelectedRecipeIds(parsedSelected);
+            }
+          } catch (_) {
+            // ignore parse errors
+          }
+        }
+
+        if (storedCooked) {
+          try {
+            const parsedCooked = JSON.parse(storedCooked);
+            if (Array.isArray(parsedCooked)) {
+              setCookedRecipeIds(parsedCooked);
             }
           } catch (_) {
             // ignore parse errors
@@ -113,6 +127,13 @@ export const AppProvider = ({ children }) => {
     }
     AsyncStorage.setItem(SELECTED_RECIPES_KEY, JSON.stringify(selectedRecipeIds)).catch(() => {});
   }, [selectedRecipeIds, isBootstrapping]);
+
+  useEffect(() => {
+    if (isBootstrapping) {
+      return;
+    }
+    AsyncStorage.setItem(COOKED_RECIPES_KEY, JSON.stringify(cookedRecipeIds)).catch(() => {});
+  }, [cookedRecipeIds, isBootstrapping]);
 
   useEffect(() => {
     if (isBootstrapping) {
@@ -218,6 +239,13 @@ export const AppProvider = ({ children }) => {
     ]);
   };
 
+  const addCookedRecipe = (recipeId) => {
+    setCookedRecipeIds((prev) => {
+      const next = [recipeId, ...prev.filter((id) => id !== recipeId)];
+      return next.slice(0, 30);
+    });
+  };
+
   const value = useMemo(
     () => ({
       token,
@@ -229,6 +257,8 @@ export const AppProvider = ({ children }) => {
       setIngredients,
       selectedRecipeIds,
       setSelectedRecipeIds,
+      cookedRecipeIds,
+      addCookedRecipe,
       login,
       loginDemo,
       signup,
@@ -238,7 +268,7 @@ export const AppProvider = ({ children }) => {
       streak,
       setStreak,
     }),
-    [token, user, isBootstrapping, budget, ingredients, selectedRecipeIds, darkMode, streak]
+    [token, user, isBootstrapping, budget, ingredients, selectedRecipeIds, cookedRecipeIds, darkMode, streak]
   );
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;

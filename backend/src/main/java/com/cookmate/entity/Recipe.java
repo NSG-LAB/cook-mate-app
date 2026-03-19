@@ -24,8 +24,12 @@ public class Recipe {
     @Column(nullable = false)
     private String region;
 
+    private Integer prepTimeMinutes;
+
     @Column(nullable = false)
     private Integer cookTimeMinutes;
+
+    private String difficulty;
 
     @Column(nullable = false)
     private Integer estimatedCost;
@@ -45,7 +49,19 @@ public class Recipe {
     private List<String> ingredients;
 
     @ElementCollection(fetch = FetchType.EAGER)
+    @CollectionTable(name = "recipe_substitutions", joinColumns = @JoinColumn(name = "recipe_id"))
+    @Column(name = "substitution_text", length = 500)
+    private List<String> substitutionSuggestions;
+
+    @ElementCollection(fetch = FetchType.EAGER)
     @CollectionTable(name = "recipe_steps", joinColumns = @JoinColumn(name = "recipe_id"))
     @Column(name = "step_text", length = 1000)
     private List<String> steps;
+
+    @ElementCollection(fetch = FetchType.EAGER)
+    @CollectionTable(name = "recipe_step_timestamps", joinColumns = @JoinColumn(name = "recipe_id"))
+    @Column(name = "timestamp_seconds")
+    private List<Integer> stepVideoTimestampsSeconds;
+
+    private Integer versionNumber;
 }

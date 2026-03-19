@@ -6,6 +6,7 @@ import LoginScreen from '../screens/LoginScreen';
 import SignupScreen from '../screens/SignupScreen';
 import MainTabs from './MainTabs';
 import RecipeDetailScreen from '../screens/RecipeDetailScreen';
+import RecipeEditorScreen from '../screens/RecipeEditorScreen';
 
 const Stack = createNativeStackNavigator();
 
@@ -34,6 +35,7 @@ export default function RootNavigator() {
     <Stack.Navigator>
       <Stack.Screen name="CookMate" component={MainTabs} options={{ headerShown: false }} />
       <Stack.Screen name="RecipeDetail" component={RecipeDetailScreen} options={{ title: 'Recipe Detail' }} />
+      <Stack.Screen name="RecipeEditor" component={RecipeEditorScreen} options={{ title: 'Recipe Editor' }} />
     </Stack.Navigator>
   );
 }

@@ -36,6 +36,63 @@ Student Cooking Assistant App starter project.
   - Grocery List
   - Profile
 
+## Feature Roadmap
+
+### Recipe Core
+
+- Recipe difficulty tags (easy, medium, hard)
+- Prep vs cook time split (not just total time)
+- Ingredient substitution suggestions ("no butter? use oil")
+- Print-friendly recipe view
+- Recipe version history (when a user edits their submission)
+- Video timestamp linking (jump to specific cooking step in the video)
+
+### Smart Suggestions
+
+- "Cook again" - re-suggest recipes the user has cooked before
+- Seasonal ingredient suggestions (what's fresh and cheap right now)
+- Weather-based suggestions ("it's cold, here's a soup")
+- Occasion-based filters (date night, kids meal, meal prep Sunday)
+- AI-powered recipe remix (generate a variation based on what you have)
+
+### Grocery and Pantry
+
+- Barcode scanner to add items to pantry
+- One-tap reorder for frequently bought items
+- Supermarket aisle grouping in grocery list (dairy together, produce together)
+- Budget tracker - how much you spent vs planned
+
+### Nutrition and Health
+
+- Allergen warning badges on recipe cards
+- Water intake tracker alongside meals
+- Integration with Apple Health / Google Fit
+- Goal-based filtering (high protein, low carb, weight loss)
+
+### Social and Community
+
+- Recipe challenges (cook this week's featured dish)
+- Chef badges and achievement system
+- Tip threads under each recipe ("I added chili flakes, 10/10")
+- Report / flag inappropriate community recipes
+
+### UX and Engagement
+
+- Voice command support ("Hey app, what can I cook with eggs?")
+- Cooking history / cook log
+- In-app cooking timer (independent of recipe steps)
+- Widget for home screen (today's meal plan or random recipe)
+- Haptic feedback during step-by-step cooking mode
+- Multilingual support
+
+### Admin and Backend
+
+- Recipe moderation dashboard for community submissions
+- Analytics dashboard (most cooked, most saved, drop-off points)
+- A/B testing hooks for recommendation algorithms
+- Ingredient price feed integration (for real cost estimates)
+- CDN-backed video streaming for recipe videos
+
 ## Database Setup
 
 1. Start MySQL locally (8.x recommended).

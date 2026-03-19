@@ -26,6 +26,26 @@ public class RecipeController {
         return ResponseEntity.ok(recipeService.getById(id));
     }
 
+    @PostMapping
+    public ResponseEntity<RecipeResponse> create(@RequestBody RecipeUpdateRequest request) {
+        return ResponseEntity.ok(recipeService.createRecipe(request));
+    }
+
+    @PutMapping("/{id}")
+    public ResponseEntity<RecipeResponse> update(@PathVariable Long id, @RequestBody RecipeUpdateRequest request) {
+        return ResponseEntity.ok(recipeService.updateRecipe(id, request));
+    }
+
+    @GetMapping("/{id}/versions")
+    public ResponseEntity<List<RecipeVersionResponse>> versions(@PathVariable Long id) {
+        return ResponseEntity.ok(recipeService.getVersionHistory(id));
+    }
+
+    @GetMapping("/{id}/print")
+    public ResponseEntity<RecipePrintResponse> printView(@PathVariable Long id) {
+        return ResponseEntity.ok(recipeService.getPrintView(id));
+    }
+
     @GetMapping("/budget")
     public ResponseEntity<List<RecipeResponse>> byBudget(
             @RequestParam(required = false) Integer budget,
@@ -38,6 +58,31 @@ public class RecipeController {
     @PostMapping("/fridge-match")
     public ResponseEntity<List<RecipeResponse>> byFridge(@RequestBody FridgeRequest request) {
         return ResponseEntity.ok(recipeService.getByIngredients(request.getIngredients()));
+    }
+
+    @PostMapping("/cook-again")
+    public ResponseEntity<List<RecipeResponse>> cookAgain(@RequestBody GroceryRequest request) {
+        return ResponseEntity.ok(recipeService.getCookAgainSuggestions(request.getRecipeIds()));
+    }
+
+    @GetMapping("/seasonal")
+    public ResponseEntity<List<RecipeResponse>> seasonal(@RequestParam(required = false) String season) {
+        return ResponseEntity.ok(recipeService.getSeasonalSuggestions(season));
+    }
+
+    @GetMapping("/weather")
+    public ResponseEntity<List<RecipeResponse>> weather(@RequestParam(defaultValue = "mild") String type) {
+        return ResponseEntity.ok(recipeService.getWeatherSuggestions(type));
+    }
+
+    @GetMapping("/occasion")
+    public ResponseEntity<List<RecipeResponse>> occasion(@RequestParam(defaultValue = "everyday") String type) {
+        return ResponseEntity.ok(recipeService.getOccasionSuggestions(type));
+    }
+
+    @PostMapping("/remix")
+    public ResponseEntity<RecipeRemixResponse> remix(@RequestBody RecipeRemixRequest request) {
+        return ResponseEntity.ok(recipeService.generateRecipeRemix(request));
     }
 
     @PostMapping("/grocery-list")
