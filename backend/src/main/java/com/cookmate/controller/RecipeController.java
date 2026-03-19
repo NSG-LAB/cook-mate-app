@@ -91,6 +91,18 @@ public class RecipeController {
         return ResponseEntity.ok(Map.of("items", items));
     }
 
+    @PostMapping("/grocery-list-grouped")
+    public ResponseEntity<Map<String, List<String>>> groceryGrouped(@RequestBody GroceryRequest request) {
+        return ResponseEntity.ok(recipeService.generateGroceryListByAisle(request.getRecipeIds()));
+    }
+
+    @PostMapping("/planned-spend")
+    public ResponseEntity<PlannedSpendResponse> plannedSpend(@RequestBody GroceryRequest request) {
+        int total = recipeService.plannedSpend(request.getRecipeIds());
+        int count = request.getRecipeIds() == null ? 0 : request.getRecipeIds().size();
+        return ResponseEntity.ok(new PlannedSpendResponse(total, count));
+    }
+
     @PostMapping("/nutrition-summary")
     public ResponseEntity<NutritionSummaryResponse> nutrition(@RequestBody GroceryRequest request) {
         return ResponseEntity.ok(recipeService.nutritionSummary(request.getRecipeIds()));

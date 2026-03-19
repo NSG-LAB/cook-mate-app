@@ -18,6 +18,7 @@ import org.springframework.test.web.servlet.MockMvc;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
@@ -27,6 +28,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 
 @WebMvcTest(RecipeController.class)
 @AutoConfigureMockMvc(addFilters = false)
@@ -171,4 +173,60 @@ class RecipeControllerTest {
                 .andExpect(jsonPath("$.baseRecipeTitle").value("Garlic Butter Ramen"))
                 .andExpect(jsonPath("$.generatedSteps[0]").value("Step A"));
     }
+
+        @Test
+        void groceryGroupedEndpointReturnsAisleMap() throws Exception {
+                Map<String, List<String>> grouped = Map.of(
+                                "Produce", List.of("tomato"),
+                                "Pantry and Grains", List.of("rice")
+                );
+                when(recipeService.generateGroceryListByAisle(List.of(1L, 2L))).thenReturn(grouped);
+
+                mockMvc.perform(post("/api/recipes/grocery-list-grouped")
+                                                .contentType(MediaType.APPLICATION_JSON)
+                                                .content("{\"recipeIds\":[1,2]}"))
+                                .andExpect(status().isOk())
+                                .andExpect(jsonPath("$.Produce[0]").value("tomato"))
+                                .andExpect(jsonPath("$.['Pantry and Grains'][0]").value("rice"));
+        }
+
+        @Test
+        void plannedSpendEndpointReturnsTotalAndCount() throws Exception {
+                when(recipeService.plannedSpend(List.of(1L, 2L, 3L))).thenReturn(360);
+
+                mockMvc.perform(post("/api/recipes/planned-spend")
+                                                .contentType(MediaType.APPLICATION_JSON)
+                                                .content("{\"recipeIds\":[1,2,3]}"))
+                                .andExpect(status().isOk())
+                                .andExpect(jsonPath("$.totalEstimatedCost").value(360))
+                                .andExpect(jsonPath("$.recipeCount").value(3));
+        }
+
+                    @Test
+                    void groceryGroupedAndPlannedSpendStayConsistentInSingleFlow() throws Exception {
+                        List<Long> recipeIds = List.of(2L, 5L);
+                        when(recipeService.generateGroceryListByAisle(recipeIds)).thenReturn(Map.of(
+                                "Produce", List.of("tomato", "onion"),
+                                "Pantry and Grains", List.of("rice")
+                        ));
+                        when(recipeService.plannedSpend(recipeIds)).thenReturn(230);
+
+                        String payload = objectMapper.writeValueAsString(Map.of("recipeIds", recipeIds));
+
+                        mockMvc.perform(post("/api/recipes/grocery-list-grouped")
+                                        .contentType(MediaType.APPLICATION_JSON)
+                                        .content(payload))
+                                .andExpect(status().isOk())
+                                .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
+                                .andExpect(jsonPath("$.Produce[0]").value("tomato"))
+                                .andExpect(jsonPath("$.['Pantry and Grains'][0]").value("rice"));
+
+                        mockMvc.perform(post("/api/recipes/planned-spend")
+                                        .contentType(MediaType.APPLICATION_JSON)
+                                        .content(payload))
+                                .andExpect(status().isOk())
+                                .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
+                                .andExpect(jsonPath("$.totalEstimatedCost").value(230))
+                                .andExpect(jsonPath("$.recipeCount").value(2));
+                    }
 }

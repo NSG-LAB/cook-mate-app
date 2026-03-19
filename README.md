@@ -40,27 +40,27 @@ Student Cooking Assistant App starter project.
 
 ### Recipe Core
 
-- Recipe difficulty tags (easy, medium, hard)
-- Prep vs cook time split (not just total time)
-- Ingredient substitution suggestions ("no butter? use oil")
-- Print-friendly recipe view
-- Recipe version history (when a user edits their submission)
-- Video timestamp linking (jump to specific cooking step in the video)
+- Implemented: Recipe difficulty tags (easy, medium, hard)
+- Implemented: Prep vs cook time split (not just total time)
+- Implemented: Ingredient substitution suggestions ("no butter? use oil")
+- Implemented: Print-friendly recipe view
+- Implemented: Recipe version history (when a user edits their submission)
+- Implemented: Video timestamp linking (jump to specific cooking step in the video)
 
 ### Smart Suggestions
 
-- "Cook again" - re-suggest recipes the user has cooked before
-- Seasonal ingredient suggestions (what's fresh and cheap right now)
-- Weather-based suggestions ("it's cold, here's a soup")
-- Occasion-based filters (date night, kids meal, meal prep Sunday)
-- AI-powered recipe remix (generate a variation based on what you have)
+- Implemented: "Cook again" - re-suggest recipes the user has cooked before
+- Implemented: Seasonal ingredient suggestions (what's fresh and cheap right now)
+- Implemented: Weather-based suggestions ("it's cold, here's a soup")
+- Implemented: Occasion-based filters (date night, kids meal, meal prep Sunday)
+- Implemented: AI-powered recipe remix (generate a variation based on what you have)
 
 ### Grocery and Pantry
 
-- Barcode scanner to add items to pantry
-- One-tap reorder for frequently bought items
-- Supermarket aisle grouping in grocery list (dairy together, produce together)
-- Budget tracker - how much you spent vs planned
+- Implemented: Barcode scanner demo flow to add items to pantry
+- Implemented: One-tap reorder for frequently bought items
+- Implemented: Supermarket aisle grouping in grocery list (dairy together, produce together)
+- Implemented: Budget tracker (spent vs planned)
 
 ### Nutrition and Health
 

@@ -17,6 +17,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -167,5 +168,36 @@ class RecipeServiceTest {
 
         assertEquals("Quick Pantry Remix", remix.getTitle());
         assertFalse(remix.getGeneratedSteps().isEmpty());
+    }
+
+    @Test
+    void generateGroceryListByAisleGroupsKnownIngredients() {
+        Recipe recipe = Recipe.builder()
+                .id(7L)
+                .title("Test")
+                .ingredients(List.of("tomato", "milk", "rice", "salt", "mystery item"))
+                .build();
+
+        when(recipeRepository.findAllById(List.of(7L))).thenReturn(List.of(recipe));
+
+        Map<String, List<String>> grouped = recipeService.generateGroceryListByAisle(List.of(7L));
+
+        assertEquals(List.of("tomato"), grouped.get("Produce"));
+        assertEquals(List.of("milk"), grouped.get("Dairy and Eggs"));
+        assertEquals(List.of("rice"), grouped.get("Pantry and Grains"));
+        assertEquals(List.of("salt"), grouped.get("Spices and Condiments"));
+        assertEquals(List.of("mystery item"), grouped.get("Other"));
+    }
+
+    @Test
+    void plannedSpendSumsEstimatedCostsAndIgnoresNulls() {
+        Recipe one = Recipe.builder().id(1L).estimatedCost(120).build();
+        Recipe two = Recipe.builder().id(2L).estimatedCost(null).build();
+        Recipe three = Recipe.builder().id(3L).estimatedCost(80).build();
+        when(recipeRepository.findAllById(List.of(1L, 2L, 3L))).thenReturn(List.of(one, two, three));
+
+        int total = recipeService.plannedSpend(List.of(1L, 2L, 3L));
+
+        assertEquals(200, total);
     }
 }

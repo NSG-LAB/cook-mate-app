@@ -184,6 +184,35 @@ public class RecipeService {
                 .toList();
     }
 
+    public Map<String, List<String>> generateGroceryListByAisle(List<Long> recipeIds) {
+        List<String> items = generateGroceryList(recipeIds);
+        Map<String, List<String>> grouped = new LinkedHashMap<>();
+        grouped.put("Produce", new ArrayList<>());
+        grouped.put("Dairy and Eggs", new ArrayList<>());
+        grouped.put("Bakery", new ArrayList<>());
+        grouped.put("Pantry and Grains", new ArrayList<>());
+        grouped.put("Proteins", new ArrayList<>());
+        grouped.put("Spices and Condiments", new ArrayList<>());
+        grouped.put("Other", new ArrayList<>());
+
+        for (String item : items) {
+            grouped.get(resolveAisle(item)).add(item);
+        }
+
+        return grouped;
+    }
+
+    public int plannedSpend(List<Long> recipeIds) {
+        if (recipeIds == null || recipeIds.isEmpty()) {
+            return 0;
+        }
+
+        return recipeRepository.findAllById(recipeIds)
+                .stream()
+                .mapToInt(recipe -> recipe.getEstimatedCost() == null ? 0 : recipe.getEstimatedCost())
+                .sum();
+    }
+
     public NutritionSummaryResponse nutritionSummary(List<Long> recipeIds) {
         List<Recipe> recipes = recipeIds == null || recipeIds.isEmpty()
                 ? List.of()
@@ -490,5 +519,28 @@ public class RecipeService {
             return "monsoon";
         }
         return "winter";
+    }
+
+    private String resolveAisle(String item) {
+        String lower = item == null ? "" : item.toLowerCase();
+        if (Set.of("onion", "tomato", "potato", "carrot", "capsicum", "cucumber", "lemon", "garlic", "spinach", "spring onion", "ginger").contains(lower)) {
+            return "Produce";
+        }
+        if (Set.of("milk", "curd", "yogurt", "cheese", "paneer", "butter", "egg").contains(lower)) {
+            return "Dairy and Eggs";
+        }
+        if (Set.of("bread", "bun", "roll", "tortilla", "pita").contains(lower)) {
+            return "Bakery";
+        }
+        if (Set.of("rice", "poha", "pasta", "noodles", "chickpea", "olive oil", "oil", "peanut").contains(lower)) {
+            return "Pantry and Grains";
+        }
+        if (Set.of("chicken", "fish", "tofu", "paneer", "egg", "chickpea").contains(lower)) {
+            return "Proteins";
+        }
+        if (Set.of("salt", "pepper", "chili", "soy sauce", "spice mix", "curry leaves", "sugar").contains(lower)) {
+            return "Spices and Condiments";
+        }
+        return "Other";
     }
 }

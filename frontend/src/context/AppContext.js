@@ -10,6 +10,8 @@ const INGREDIENTS_KEY = 'appIngredients';
 const BUDGET_KEY = 'appBudget';
 const SELECTED_RECIPES_KEY = 'appSelectedRecipes';
 const COOKED_RECIPES_KEY = 'appCookedRecipes';
+const SPENT_BUDGET_KEY = 'appSpentBudget';
+const PURCHASE_HISTORY_KEY = 'appPurchaseHistory';
 const DARK_MODE_KEY = 'appDarkMode';
 const STREAK_KEY = 'appStreak';
 
@@ -21,6 +23,8 @@ export const AppProvider = ({ children }) => {
   const [ingredients, setIngredients] = useState([]);
   const [selectedRecipeIds, setSelectedRecipeIds] = useState([]);
   const [cookedRecipeIds, setCookedRecipeIds] = useState([]);
+  const [spentBudget, setSpentBudget] = useState(0);
+  const [purchaseHistory, setPurchaseHistory] = useState({});
   const [darkMode, setDarkMode] = useState(false);
   const [streak, setStreak] = useState(0);
   const [axiosInterceptorId, setAxiosInterceptorId] = useState(null);
@@ -28,13 +32,15 @@ export const AppProvider = ({ children }) => {
   useEffect(() => {
     const restoreSession = async () => {
       try {
-        const [storedToken, storedUser, storedIngredients, storedBudget, storedSelected, storedCooked, storedDarkMode, storedStreak] = await Promise.all([
+        const [storedToken, storedUser, storedIngredients, storedBudget, storedSelected, storedCooked, storedSpentBudget, storedPurchaseHistory, storedDarkMode, storedStreak] = await Promise.all([
           AsyncStorage.getItem(AUTH_TOKEN_KEY),
           AsyncStorage.getItem(AUTH_USER_KEY),
           AsyncStorage.getItem(INGREDIENTS_KEY),
           AsyncStorage.getItem(BUDGET_KEY),
           AsyncStorage.getItem(SELECTED_RECIPES_KEY),
           AsyncStorage.getItem(COOKED_RECIPES_KEY),
+          AsyncStorage.getItem(SPENT_BUDGET_KEY),
+          AsyncStorage.getItem(PURCHASE_HISTORY_KEY),
           AsyncStorage.getItem(DARK_MODE_KEY),
           AsyncStorage.getItem(STREAK_KEY),
         ]);
@@ -89,6 +95,24 @@ export const AppProvider = ({ children }) => {
           }
         }
 
+        if (storedSpentBudget) {
+          const parsedSpent = Number(storedSpentBudget);
+          if (!Number.isNaN(parsedSpent)) {
+            setSpentBudget(parsedSpent);
+          }
+        }
+
+        if (storedPurchaseHistory) {
+          try {
+            const parsedPurchaseHistory = JSON.parse(storedPurchaseHistory);
+            if (parsedPurchaseHistory && typeof parsedPurchaseHistory === 'object') {
+              setPurchaseHistory(parsedPurchaseHistory);
+            }
+          } catch (_) {
+            // ignore parse errors
+          }
+        }
+
         if (storedDarkMode !== null) {
           setDarkMode(storedDarkMode === 'true');
         }
@@ -134,6 +158,20 @@ export const AppProvider = ({ children }) => {
     }
     AsyncStorage.setItem(COOKED_RECIPES_KEY, JSON.stringify(cookedRecipeIds)).catch(() => {});
   }, [cookedRecipeIds, isBootstrapping]);
+
+  useEffect(() => {
+    if (isBootstrapping) {
+      return;
+    }
+    AsyncStorage.setItem(SPENT_BUDGET_KEY, String(spentBudget)).catch(() => {});
+  }, [spentBudget, isBootstrapping]);
+
+  useEffect(() => {
+    if (isBootstrapping) {
+      return;
+    }
+    AsyncStorage.setItem(PURCHASE_HISTORY_KEY, JSON.stringify(purchaseHistory)).catch(() => {});
+  }, [purchaseHistory, isBootstrapping]);
 
   useEffect(() => {
     if (isBootstrapping) {
@@ -246,6 +284,34 @@ export const AppProvider = ({ children }) => {
     });
   };
 
+  const addPantryItem = (item) => {
+    if (!item) {
+      return;
+    }
+    const normalized = item.trim().toLowerCase();
+    if (!normalized) {
+      return;
+    }
+    setIngredients((prev) => (prev.includes(normalized) ? prev : [...prev, normalized]));
+  };
+
+  const recordPurchasedItem = (item, amount = 0) => {
+    if (!item || typeof item !== 'string') {
+      return;
+    }
+    const normalized = item.trim().toLowerCase();
+    if (!normalized) {
+      return;
+    }
+    setPurchaseHistory((prev) => ({
+      ...prev,
+      [normalized]: (prev[normalized] || 0) + 1,
+    }));
+    if (amount > 0) {
+      setSpentBudget((prev) => Number((prev + amount).toFixed(2)));
+    }
+  };
+
   const value = useMemo(
     () => ({
       token,
@@ -259,6 +325,11 @@ export const AppProvider = ({ children }) => {
       setSelectedRecipeIds,
       cookedRecipeIds,
       addCookedRecipe,
+      spentBudget,
+      setSpentBudget,
+      purchaseHistory,
+      recordPurchasedItem,
+      addPantryItem,
       login,
       loginDemo,
       signup,
@@ -268,7 +339,7 @@ export const AppProvider = ({ children }) => {
       streak,
       setStreak,
     }),
-    [token, user, isBootstrapping, budget, ingredients, selectedRecipeIds, cookedRecipeIds, darkMode, streak]
+    [token, user, isBootstrapping, budget, ingredients, selectedRecipeIds, cookedRecipeIds, spentBudget, purchaseHistory, darkMode, streak]
   );
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
