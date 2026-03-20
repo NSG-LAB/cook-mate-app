@@ -8,6 +8,7 @@ export default function LoginScreen({ navigation }) {
   const { login, loginDemo } = useApp();
   const [email, setEmail] = useState('student@example.com');
   const [password, setPassword] = useState('password123');
+  const [showPassword, setShowPassword] = useState(false);
   const [fieldErrors, setFieldErrors] = useState({});
   const [formError, setFormError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -84,18 +85,29 @@ export default function LoginScreen({ navigation }) {
           keyboardType="email-address"
         />
         {fieldErrors.email ? <Text style={styles.errorText}>{fieldErrors.email}</Text> : null}
-        <TextInput
-          placeholder="Password"
-          value={password}
-          onChangeText={(value) => {
-            setPassword(value);
-            if (fieldErrors.password) {
-              setFieldErrors((prev) => ({ ...prev, password: undefined }));
-            }
-          }}
-          style={[styles.input, fieldErrors.password && styles.inputError]}
-          secureTextEntry
-        />
+        <View style={[styles.input, styles.passwordRow, fieldErrors.password && styles.inputError]}>
+          <TextInput
+            placeholder="Password"
+            value={password}
+            onChangeText={(value) => {
+              setPassword(value);
+              if (fieldErrors.password) {
+                setFieldErrors((prev) => ({ ...prev, password: undefined }));
+              }
+            }}
+            style={styles.passwordInput}
+            secureTextEntry={!showPassword}
+            autoCapitalize="none"
+          />
+          <TouchableOpacity
+            style={styles.passwordToggle}
+            onPress={() => setShowPassword((prev) => !prev)}
+            accessibilityRole="button"
+            accessibilityLabel={showPassword ? 'Hide password' : 'Show password'}
+          >
+            <Ionicons name={showPassword ? 'eye-off-outline' : 'eye-outline'} size={20} color="#777" />
+          </TouchableOpacity>
+        </View>
         {fieldErrors.password ? <Text style={styles.errorText}>{fieldErrors.password}</Text> : null}
         {formError ? <Text style={styles.formError}>{formError}</Text> : null}
 
@@ -162,6 +174,9 @@ const styles = StyleSheet.create({
     padding: 12,
     marginBottom: 12,
   },
+  passwordRow: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 4 },
+  passwordInput: { flex: 1, paddingHorizontal: 8, paddingVertical: 0 },
+  passwordToggle: { padding: 8 },
   inputError: { borderColor: '#E74C3C' },
   btn: {
     flexDirection: 'row',
