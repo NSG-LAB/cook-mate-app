@@ -1,5 +1,6 @@
 import React from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
+import { View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import HomeScreen from '../screens/HomeScreen';
 import IngredientsScreen from '../screens/IngredientsScreen';
@@ -39,24 +40,52 @@ export default function MainTabs() {
       screenOptions={({ route }) => ({
         headerTitleAlign: 'center',
         tabBarActiveTintColor: palette.primary,
-        tabBarInactiveTintColor: '#888',
+        tabBarInactiveTintColor: palette.muted,
+        tabBarLabelStyle: { fontWeight: '600', fontSize: 12, marginBottom: -2 },
+        tabBarItemStyle: { marginHorizontal: 4 },
         tabBarStyle: {
-          backgroundColor: '#fff',
-          borderTopColor: palette.border,
-          height: 64,
-          paddingBottom: 8,
+          backgroundColor: palette.card,
+          borderTopColor: 'transparent',
+          elevation: 10,
+          shadowColor: '#000',
+          height: 60,
+          marginHorizontal: 18,
+          marginBottom: 12,
+          borderRadius: 999,
+          paddingBottom: 6,
+          paddingTop: 6,
         },
-        tabBarIcon: ({ color, size }) => (
-          <Ionicons name={iconForRoute(route.name)} size={size} color={color} />
+        tabBarIcon: ({ color, size, focused }) => (
+          <View
+            style={{
+              backgroundColor: focused ? '#EEF2FF' : 'transparent',
+              padding: 6,
+              borderRadius: 12,
+            }}
+          >
+            <Ionicons name={iconForRoute(route.name)} size={size} color={color} />
+          </View>
         ),
       })}
     >
       <Tab.Screen name="Home" component={HomeScreen} />
       <Tab.Screen name="Suggestions" component={RecipeSuggestionsScreen} />
-      <Tab.Screen name="My Ingredients" component={IngredientsScreen} />
+      <Tab.Screen
+        name="My Ingredients"
+        component={IngredientsScreen}
+        options={{ tabBarButton: () => null }}
+      />
       <Tab.Screen name="Grocery" component={GroceryScreen} />
-      <Tab.Screen name="History" component={CookingHistoryScreen} />
-      <Tab.Screen name="Recipe Editor" component={RecipeEditorScreen} />
+      <Tab.Screen
+        name="History"
+        component={CookingHistoryScreen}
+        options={{ tabBarButton: () => null }}
+      />
+      <Tab.Screen
+        name="Recipe Editor"
+        component={RecipeEditorScreen}
+        options={{ tabBarButton: () => null }}
+      />
       <Tab.Screen name="Profile" component={ProfileScreen} />
     </Tab.Navigator>
   );

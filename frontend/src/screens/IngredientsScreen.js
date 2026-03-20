@@ -62,8 +62,8 @@ export default function IngredientsScreen({ navigation }) {
     setIngredients((prev) => prev.filter((ing) => ing !== item));
   };
 
-  return (
-    <View style={styles.container}>
+  const renderHeader = () => (
+    <View>
       <Text style={styles.title}>What’s in my fridge?</Text>
       <View style={styles.tipCard}>
         <Ionicons name="sparkles-outline" size={18} color={palette.secondary} />
@@ -110,26 +110,33 @@ export default function IngredientsScreen({ navigation }) {
         <Ionicons name="restaurant-outline" size={18} color="#fff" />
         <Text style={styles.suggestText}>{isSubmitting ? 'Loading matches...' : 'Suggest Recipes'}</Text>
       </TouchableOpacity>
-
-      <FlatList
-        data={matches}
-        keyExtractor={(item) => String(item.id)}
-        contentContainerStyle={styles.listSpacing}
-        renderItem={({ item }) => (
-          <RecipeCard
-            recipe={item}
-            onPress={() => navigation.navigate('RecipeDetail', { id: item.id })}
-            onToggleSelect={toggleSelected}
-            selected={selectedRecipeIds.includes(item.id)}
-          />
-        )}
-      />
     </View>
+  );
+
+  return (
+    <FlatList
+      style={styles.list}
+      data={matches}
+      keyExtractor={(item) => String(item.id)}
+      contentContainerStyle={styles.listSpacing}
+      ListHeaderComponent={renderHeader}
+      ListFooterComponent={<View style={{ height: 32 }} />}
+      ListEmptyComponent={<Text style={styles.emptyText}>Add ingredients and tap "Suggest Recipes" to see tailored matches.</Text>}
+      renderItem={({ item }) => (
+        <RecipeCard
+          recipe={item}
+          onPress={() => navigation.navigate('RecipeDetail', { id: item.id })}
+          onToggleSelect={toggleSelected}
+          selected={selectedRecipeIds.includes(item.id)}
+        />
+      )}
+    />
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: palette.backgroundAlt, padding: 14 },
+  list: { flex: 1, backgroundColor: palette.backgroundAlt },
+  listSpacing: { padding: 14 },
   title: { fontSize: 22, fontWeight: '800', color: palette.text, marginBottom: 8 },
   tipCard: {
     flexDirection: 'row',
@@ -165,7 +172,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   suggestText: { color: '#fff', fontWeight: '700', marginLeft: 8 },
-  listSpacing: { paddingBottom: 40 },
+  emptyText: { textAlign: 'center', color: palette.muted, marginTop: 20, fontWeight: '600' },
   addRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 12 },
   input: {
     flex: 1,

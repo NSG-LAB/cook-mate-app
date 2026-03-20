@@ -15,6 +15,9 @@ import com.cookmate.entity.RecipeVersion;
 import com.cookmate.repository.RecipeRepository;
 import com.cookmate.repository.RecipeVersionRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
@@ -28,6 +31,7 @@ public class RecipeService {
 
     private final RecipeRepository recipeRepository;
     private final RecipeVersionRepository recipeVersionRepository;
+    private static final int MAX_SUGGESTION_CANDIDATES = 200;
 
     public List<RecipeResponse> getAll(String region) {
         List<Recipe> recipes = (region == null || region.isBlank())
@@ -37,24 +41,47 @@ public class RecipeService {
     }
 
     public List<RecipeResponse> getByBudget(Integer budget, String region, boolean quickOnly) {
-        return getAll(region).stream()
-                .filter(r -> budget == null || r.getEstimatedCost() <= budget)
-                .filter(r -> !quickOnly || r.getCookTimeMinutes() <= 15)
-                .sorted(Comparator.comparingInt(RecipeResponse::getEstimatedCost))
-                .toList();
+        Integer maxCookTime = quickOnly ? 15 : null;
+        String normalizedRegion = normalizeRegion(region);
+        Pageable pageable = PageRequest.of(0, MAX_SUGGESTION_CANDIDATES, Sort.by(Sort.Direction.ASC, "estimatedCost"));
+
+        List<Recipe> recipes = recipeRepository.searchPublishedRecipes(
+            normalizedRegion,
+            budget,
+            maxCookTime,
+            RecipeModerationStatus.PUBLISHED,
+            pageable
+        );
+
+        return recipes.stream()
+            .map(recipe -> toResponse(recipe, null))
+            .sorted(Comparator.comparingInt(RecipeResponse::getEstimatedCost))
+            .toList();
     }
 
     public List<RecipeResponse> getByIngredients(List<String> ingredients) {
         Set<String> lower = ingredients == null ? Set.of() : ingredients.stream()
-                .map(String::trim)
-                .map(String::toLowerCase)
-                .collect(Collectors.toSet());
+            .map(String::trim)
+            .map(String::toLowerCase)
+            .filter(s -> !s.isBlank())
+            .collect(Collectors.toSet());
 
-        return getPublishedRecipes().stream()
-                .map(recipe -> toResponse(recipe, lower))
-                .filter(r -> r.getIngredientMatchPercent() != null && r.getIngredientMatchPercent() > 0)
-                .sorted(Comparator.comparingInt(RecipeResponse::getIngredientMatchPercent).reversed())
-                .toList();
+        if (lower.isEmpty()) {
+            return List.of();
+        }
+
+        Pageable pageable = PageRequest.of(0, MAX_SUGGESTION_CANDIDATES, Sort.by(Sort.Direction.DESC, "id"));
+        List<Recipe> matches = recipeRepository.findPublishedByIngredients(
+            lower,
+            RecipeModerationStatus.PUBLISHED,
+            pageable
+        );
+
+        return matches.stream()
+            .map(recipe -> toResponse(recipe, lower))
+            .filter(r -> r.getIngredientMatchPercent() != null && r.getIngredientMatchPercent() > 0)
+            .sorted(Comparator.comparingInt(RecipeResponse::getIngredientMatchPercent).reversed())
+            .toList();
     }
 
             public List<RecipeResponse> getCookAgainSuggestions(List<Long> cookedRecipeIds) {
@@ -83,7 +110,7 @@ public class RecipeService {
                 default -> Set.of("tomato", "onion", "garlic", "lemon");
             };
 
-            return getPublishedRecipes().stream()
+            return getPublishedSnapshot().stream()
                 .filter(recipe -> containsAnyIngredient(recipe, seasonalIngredients))
                 .map(recipe -> toResponse(recipe, null))
                 .toList();
@@ -91,7 +118,7 @@ public class RecipeService {
 
             public List<RecipeResponse> getWeatherSuggestions(String type) {
             String weatherType = type == null ? "mild" : type.trim().toLowerCase();
-            return getPublishedRecipes().stream()
+            return getPublishedSnapshot().stream()
                 .filter(recipe -> switch (weatherType) {
                     case "cold" -> recipe.getTitle().toLowerCase().contains("ramen")
                         || recipe.getTitle().toLowerCase().contains("pasta")
@@ -111,7 +138,7 @@ public class RecipeService {
             public List<RecipeResponse> getOccasionSuggestions(String type) {
             String occasion = type == null ? "everyday" : type.trim().toLowerCase();
 
-            return getPublishedRecipes().stream()
+            return getPublishedSnapshot().stream()
                 .filter(recipe -> switch (occasion) {
                     case "date-night" -> Set.of("italian", "japanese", "mediterranean").contains(recipe.getRegion().toLowerCase())
                         && recipe.getEstimatedCost() >= 100;
@@ -136,10 +163,21 @@ public class RecipeService {
             }
 
             if (base == null && !available.isEmpty()) {
-                base = getPublishedRecipes().stream()
-                    .filter(recipe -> containsAnyIngredient(recipe, new HashSet<>(available)))
-                    .findFirst()
-                    .orElse(null);
+                Pageable singleRecipe = PageRequest.of(0, 1, Sort.by(Sort.Direction.DESC, "id"));
+                List<Recipe> candidates = recipeRepository.findPublishedByIngredients(
+                        new HashSet<>(available),
+                        RecipeModerationStatus.PUBLISHED,
+                        singleRecipe
+                );
+
+                if (!candidates.isEmpty()) {
+                    base = candidates.get(0);
+                } else {
+                    base = getPublishedSnapshot().stream()
+                            .filter(recipe -> containsAnyIngredient(recipe, new HashSet<>(available)))
+                            .findFirst()
+                            .orElse(null);
+                }
             }
 
             if (base == null) {
@@ -448,8 +486,9 @@ public class RecipeService {
                 .build();
     }
 
-    private List<Recipe> getPublishedRecipes() {
-        return recipeRepository.findByModerationStatus(RecipeModerationStatus.PUBLISHED);
+    private List<Recipe> getPublishedSnapshot() {
+        Pageable pageable = PageRequest.of(0, MAX_SUGGESTION_CANDIDATES, Sort.by(Sort.Direction.DESC, "id"));
+        return recipeRepository.findByModerationStatus(RecipeModerationStatus.PUBLISHED, pageable).getContent();
     }
 
     private RecipeResponse toResponse(Recipe recipe, Set<String> fridgeIngredients) {
@@ -494,6 +533,10 @@ public class RecipeService {
                 .moderationDecisionBy(recipe.getModerationDecisionBy())
                 .moderationDecisionAt(recipe.getModerationDecisionAt())
                 .build();
+    }
+
+    private String normalizeRegion(String region) {
+        return (region == null || region.isBlank()) ? null : region.trim();
     }
 
     private String resolveDifficulty(Recipe recipe) {

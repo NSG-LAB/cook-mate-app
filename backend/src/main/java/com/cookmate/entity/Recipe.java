@@ -7,7 +7,13 @@ import java.time.LocalDateTime;
 import java.util.List;
 
 @Entity
-@Table(name = "recipes")
+@Table(
+    name = "recipes",
+    indexes = {
+        @Index(name = "idx_recipes_region_status", columnList = "region, moderation_status"),
+        @Index(name = "idx_recipes_cost_status", columnList = "estimated_cost, moderation_status")
+    }
+)
 @Getter
 @Setter
 @NoArgsConstructor
@@ -32,7 +38,7 @@ public class Recipe {
 
     private String difficulty;
 
-    @Column(nullable = false)
+    @Column(name = "estimated_cost", nullable = false)
     private Integer estimatedCost;
 
     @Column(nullable = false)
@@ -45,7 +51,11 @@ public class Recipe {
     private String videoUrl;
 
     @ElementCollection(fetch = FetchType.EAGER)
-    @CollectionTable(name = "recipe_ingredients", joinColumns = @JoinColumn(name = "recipe_id"))
+    @CollectionTable(
+        name = "recipe_ingredients",
+        joinColumns = @JoinColumn(name = "recipe_id"),
+        indexes = @Index(name = "idx_recipe_ingredients_text", columnList = "ingredient")
+    )
     @Column(name = "ingredient")
     private List<String> ingredients;
 
@@ -67,7 +77,7 @@ public class Recipe {
     private Integer versionNumber;
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
+    @Column(name = "moderation_status", nullable = false)
     @Builder.Default
     private RecipeModerationStatus moderationStatus = RecipeModerationStatus.PUBLISHED;
 

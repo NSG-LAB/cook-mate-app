@@ -16,6 +16,8 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.Pageable;
 
 import java.util.List;
 import java.util.Map;
@@ -25,6 +27,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -154,7 +157,8 @@ class RecipeServiceTest {
                 .steps(List.of("a"))
                 .build();
 
-        when(recipeRepository.findByModerationStatus(RecipeModerationStatus.PUBLISHED)).thenReturn(List.of(ramen, salad));
+        when(recipeRepository.findByModerationStatus(eq(RecipeModerationStatus.PUBLISHED), any(Pageable.class)))
+            .thenReturn(new PageImpl<>(List.of(ramen, salad)));
 
         List<RecipeResponse> results = recipeService.getWeatherSuggestions("cold");
         assertTrue(results.stream().anyMatch(r -> "Garlic Butter Ramen".equals(r.getTitle())));

@@ -141,8 +141,41 @@ export default function HomeScreen({ navigation }) {
     );
   };
 
-  return (
-    <View style={styles.container}>
+  const quickActions = useMemo(
+    () => [
+      {
+        key: 'pantry',
+        title: 'My Pantry',
+        subtitle: 'Update fridge chips',
+        icon: 'leaf-outline',
+        bg: '#ECFCCB',
+        color: '#365314',
+        route: 'My Ingredients',
+      },
+      {
+        key: 'history',
+        title: 'History',
+        subtitle: `${historySummary?.sessionsThisWeek ?? 0} cooks this week`,
+        icon: 'time-outline',
+        bg: '#E0E7FF',
+        color: '#312E81',
+        route: 'History',
+      },
+      {
+        key: 'editor',
+        title: 'Create',
+        subtitle: 'Submit a recipe',
+        icon: 'create-outline',
+        bg: '#FFE4E6',
+        color: '#9F1239',
+        route: 'Recipe Editor',
+      },
+    ],
+    [historySummary]
+  );
+
+  const renderHeader = () => (
+    <View>
       <Text style={styles.title}>CookMate Student</Text>
       <Text style={styles.streak}>🔥 Cooked {historySummary?.streakDays ?? streak} days in a row!</Text>
 
@@ -156,15 +189,29 @@ export default function HomeScreen({ navigation }) {
 
       <View style={styles.statusRow}>
         <View style={[styles.statusCard, styles.cardSpacing]}>
-          <Ionicons name="wallet-outline" size={22} color={palette.primaryDark} />
-          <Text style={styles.statusValue}>₹{budget}</Text>
           <Text style={styles.statusLabel}>Budget Target</Text>
+          <Text style={styles.statusValue}>₹{budget}</Text>
         </View>
-        <View style={styles.statusCard}>
-          <Ionicons name="cart-outline" size={22} color={palette.secondary} />
-          <Text style={styles.statusValue}>{selectedRecipeIds.length}</Text>
+        <View style={[styles.statusCard, styles.secondaryCard]}>
           <Text style={styles.statusLabel}>Recipes in Plan</Text>
+          <Text style={styles.statusValue}>{selectedRecipeIds.length}</Text>
         </View>
+      </View>
+
+      <View style={styles.quickGrid}>
+        {quickActions.map((action) => (
+          <TouchableOpacity
+            key={action.key}
+            style={[styles.quickCard, { backgroundColor: action.bg }]}
+            onPress={() => navigation.navigate(action.route)}
+          >
+            <View style={styles.quickIconWrap}>
+              <Ionicons name={action.icon} size={22} color={action.color} />
+            </View>
+            <Text style={styles.quickTitle}>{action.title}</Text>
+            <Text style={styles.quickSubtitle}>{action.subtitle}</Text>
+          </TouchableOpacity>
+        ))}
       </View>
 
       <View style={styles.row}>
@@ -179,14 +226,17 @@ export default function HomeScreen({ navigation }) {
         })}
       </View>
 
-      <Text style={styles.budgetText}>Budget: ₹{budget}</Text>
+      <View style={styles.sliderRow}>
+        <Text style={styles.budgetText}>Budget: ₹{budget}</Text>
+        <Text style={styles.sliderHint}>drag to tweak suggestions</Text>
+      </View>
       <Slider
         minimumValue={500}
         maximumValue={3000}
         step={100}
         minimumTrackTintColor={palette.primary}
         maximumTrackTintColor={palette.border}
-        thumbTintColor={palette.secondary}
+        thumbTintColor={palette.accent}
         value={budget}
         onValueChange={setBudget}
       />
@@ -195,12 +245,16 @@ export default function HomeScreen({ navigation }) {
         {loading ? <ActivityIndicator color="#fff" /> : <Ionicons name="flash-outline" size={20} color="#fff" />}
         <Text style={styles.quickBtnText}>{loading ? 'Loading...' : 'Suggest 10-minute recipe'}</Text>
       </TouchableOpacity>
-      <TouchableOpacity style={styles.createBtn} onPress={() => navigation.navigate('RecipeEditor')}>
+      <TouchableOpacity style={styles.createBtn} onPress={() => navigation.navigate('Recipe Editor')}>
         <Ionicons name="add-circle-outline" size={20} color="#fff" />
         <Text style={styles.createBtnText}>Create Recipe Submission</Text>
       </TouchableOpacity>
       {error ? <Text style={styles.errorText}>{error}</Text> : null}
+    </View>
+  );
 
+  return (
+    <View style={styles.container}>
       <FlatList
         data={recipes}
         keyExtractor={(item) => String(item.id)}
@@ -212,35 +266,53 @@ export default function HomeScreen({ navigation }) {
             selected={selectedRecipeIds.includes(item.id)}
           />
         )}
+        ListHeaderComponent={renderHeader}
         ListEmptyComponent={
-          <Text style={styles.emptyText}>
-            {loading ? 'Fetching recipes...' : error ? 'Try adjusting the filters or pull to refresh.' : 'No recipes found for this filter.'}
-          </Text>
+          !loading ? (
+            <Text style={styles.emptyText}>No recipes found for this filter. Try another region or budget.</Text>
+          ) : null
         }
+        contentContainerStyle={styles.listContent}
+        ListFooterComponent={<View style={{ height: 32 }} />}
       />
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: palette.backgroundAlt, padding: 14 },
-  title: { fontSize: 24, fontWeight: '800', color: palette.text },
+  container: { flex: 1, backgroundColor: palette.backgroundAlt },
+  listContent: { paddingHorizontal: 14, paddingTop: 14 },
+  title: { fontSize: 26, fontWeight: '800', color: palette.text },
   streak: { color: palette.secondary, marginVertical: 8, fontWeight: '700' },
   statusRow: { flexDirection: 'row', marginBottom: 16 },
   cardSpacing: { marginRight: 12 },
   statusCard: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#E0E7FF',
     borderRadius: 16,
-    padding: 14,
-    elevation: 3,
-    shadowColor: '#000',
-    shadowOpacity: 0.08,
-    shadowRadius: 6,
-    shadowOffset: { width: 0, height: 4 },
+    padding: 16,
   },
-  statusValue: { fontSize: 20, fontWeight: '800', color: palette.text, marginTop: 6 },
-  statusLabel: { color: '#777', marginTop: 2 },
+  secondaryCard: { backgroundColor: '#FEF3C7' },
+  statusValue: { fontSize: 24, fontWeight: '800', color: palette.text, marginTop: 6 },
+  statusLabel: { color: palette.muted, fontWeight: '600', letterSpacing: 0.2 },
+  quickGrid: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 16 },
+  quickCard: {
+    flex: 1,
+    borderRadius: 18,
+    padding: 14,
+    marginRight: 12,
+  },
+  quickIconWrap: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    backgroundColor: '#fff',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 10,
+  },
+  quickTitle: { fontWeight: '800', color: palette.text, fontSize: 16 },
+  quickSubtitle: { color: palette.text, opacity: 0.7, marginTop: 4 },
   row: { flexDirection: 'row', flexWrap: 'wrap', marginBottom: 10 },
   chip: {
     borderWidth: 1,
@@ -257,7 +329,9 @@ const styles = StyleSheet.create({
   chipActive: { backgroundColor: palette.primary },
   chipText: { color: palette.text, marginLeft: 6 },
   chipTextActive: { color: '#fff', fontWeight: '700', marginLeft: 6 },
-  budgetText: { color: palette.text, marginBottom: 6, fontWeight: '700' },
+  sliderRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 },
+  budgetText: { color: palette.text, fontWeight: '800', fontSize: 16 },
+  sliderHint: { color: palette.muted, fontSize: 12 },
   quickBtn: {
     backgroundColor: palette.secondary,
     padding: 12,
@@ -279,6 +353,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   createBtnText: { color: '#fff', fontWeight: '700', marginLeft: 8 },
-  errorText: { color: '#E74C3C', marginBottom: 8, textAlign: 'center' },
-  emptyText: { color: palette.text, textAlign: 'center', marginTop: 20 },
+  errorText: { color: '#E74C3C', marginBottom: 8, textAlign: 'left' },
+  emptyText: { color: palette.muted, textAlign: 'center', marginTop: 24, fontWeight: '600' },
 });
