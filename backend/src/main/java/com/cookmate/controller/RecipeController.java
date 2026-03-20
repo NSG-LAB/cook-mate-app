@@ -17,7 +17,7 @@ public class RecipeController {
     private final RecipeService recipeService;
 
     @GetMapping
-    public ResponseEntity<List<RecipeResponse>> all(@RequestParam(required = false) String region) {
+    public ResponseEntity<List<RecipeSummaryResponse>> all(@RequestParam(required = false) String region) {
         return ResponseEntity.ok(recipeService.getAll(region));
     }
 
@@ -47,7 +47,7 @@ public class RecipeController {
     }
 
     @GetMapping("/budget")
-    public ResponseEntity<List<RecipeResponse>> byBudget(
+    public ResponseEntity<List<RecipeSummaryResponse>> byBudget(
             @RequestParam(required = false) Integer budget,
             @RequestParam(required = false) String region,
             @RequestParam(defaultValue = "false") boolean quickOnly
@@ -56,27 +56,27 @@ public class RecipeController {
     }
 
     @PostMapping("/fridge-match")
-    public ResponseEntity<List<RecipeResponse>> byFridge(@RequestBody FridgeRequest request) {
+    public ResponseEntity<List<RecipeSummaryResponse>> byFridge(@RequestBody FridgeRequest request) {
         return ResponseEntity.ok(recipeService.getByIngredients(request.getIngredients()));
     }
 
     @PostMapping("/cook-again")
-    public ResponseEntity<List<RecipeResponse>> cookAgain(@RequestBody GroceryRequest request) {
+    public ResponseEntity<List<RecipeSummaryResponse>> cookAgain(@RequestBody GroceryRequest request) {
         return ResponseEntity.ok(recipeService.getCookAgainSuggestions(request.getRecipeIds()));
     }
 
     @GetMapping("/seasonal")
-    public ResponseEntity<List<RecipeResponse>> seasonal(@RequestParam(required = false) String season) {
+    public ResponseEntity<List<RecipeSummaryResponse>> seasonal(@RequestParam(required = false) String season) {
         return ResponseEntity.ok(recipeService.getSeasonalSuggestions(season));
     }
 
     @GetMapping("/weather")
-    public ResponseEntity<List<RecipeResponse>> weather(@RequestParam(defaultValue = "mild") String type) {
+    public ResponseEntity<List<RecipeSummaryResponse>> weather(@RequestParam(defaultValue = "mild") String type) {
         return ResponseEntity.ok(recipeService.getWeatherSuggestions(type));
     }
 
     @GetMapping("/occasion")
-    public ResponseEntity<List<RecipeResponse>> occasion(@RequestParam(defaultValue = "everyday") String type) {
+    public ResponseEntity<List<RecipeSummaryResponse>> occasion(@RequestParam(defaultValue = "everyday") String type) {
         return ResponseEntity.ok(recipeService.getOccasionSuggestions(type));
     }
 
@@ -86,9 +86,12 @@ public class RecipeController {
     }
 
     @PostMapping("/grocery-list")
-    public ResponseEntity<Map<String, List<String>>> grocery(@RequestBody GroceryRequest request) {
-        List<String> items = recipeService.generateGroceryList(request.getRecipeIds());
-        return ResponseEntity.ok(Map.of("items", items));
+    public ResponseEntity<PagedResponse<String>> grocery(
+            @RequestBody GroceryRequest request,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "25") int size
+    ) {
+        return ResponseEntity.ok(recipeService.generateGroceryListPage(request.getRecipeIds(), page, size));
     }
 
     @PostMapping("/grocery-list-grouped")

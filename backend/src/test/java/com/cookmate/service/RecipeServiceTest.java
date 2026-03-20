@@ -3,6 +3,7 @@ package com.cookmate.service;
 import com.cookmate.dto.RecipeResponse;
 import com.cookmate.dto.RecipeRemixRequest;
 import com.cookmate.dto.RecipeRemixResponse;
+import com.cookmate.dto.RecipeSummaryResponse;
 import com.cookmate.dto.RecipeUpdateRequest;
 import com.cookmate.dto.RecipeVersionResponse;
 import com.cookmate.entity.Recipe;
@@ -124,7 +125,7 @@ class RecipeServiceTest {
 
         when(recipeRepository.findAllById(List.of(9L, 4L))).thenReturn(List.of(second, first));
 
-        List<RecipeResponse> results = recipeService.getCookAgainSuggestions(List.of(9L, 4L));
+        List<RecipeSummaryResponse> results = recipeService.getCookAgainSuggestions(List.of(9L, 4L));
 
         assertEquals(2, results.size());
         assertEquals(9L, results.get(0).getId());
@@ -161,7 +162,7 @@ class RecipeServiceTest {
         when(recipeRepository.findByModerationStatus(eq(RecipeModerationStatus.PUBLISHED), any(Pageable.class)))
             .thenReturn(new PageImpl<>(List.of(ramen, salad)));
 
-        List<RecipeResponse> results = recipeService.getWeatherSuggestions("cold");
+        List<RecipeSummaryResponse> results = recipeService.getWeatherSuggestions("cold");
         assertTrue(results.stream().anyMatch(r -> "Garlic Butter Ramen".equals(r.getTitle())));
     }
 

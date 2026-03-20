@@ -1,6 +1,8 @@
 package com.cookmate.controller;
 
+import com.cookmate.dto.PagedResponse;
 import com.cookmate.dto.RecipeResponse;
+import com.cookmate.dto.RecipeSummaryResponse;
 import com.cookmate.dto.RecipeRemixRequest;
 import com.cookmate.dto.RecipeRemixResponse;
 import com.cookmate.dto.RecipeUpdateRequest;
@@ -105,8 +107,8 @@ class RecipeControllerTest {
 
     @Test
     void cookAgainEndpointReturnsCookedHistoryOrder() throws Exception {
-        RecipeResponse r1 = RecipeResponse.builder().id(9L).title("Garlic Butter Ramen").build();
-        RecipeResponse r2 = RecipeResponse.builder().id(4L).title("Chickpea Salad Bowl").build();
+                RecipeSummaryResponse r1 = RecipeSummaryResponse.builder().id(9L).title("Garlic Butter Ramen").build();
+                RecipeSummaryResponse r2 = RecipeSummaryResponse.builder().id(4L).title("Chickpea Salad Bowl").build();
 
         when(recipeService.getCookAgainSuggestions(List.of(9L, 4L))).thenReturn(List.of(r1, r2));
 
@@ -121,7 +123,7 @@ class RecipeControllerTest {
     @Test
     void seasonalEndpointReturnsSeasonalRecipes() throws Exception {
         when(recipeService.getSeasonalSuggestions("summer")).thenReturn(List.of(
-                RecipeResponse.builder().id(2L).title("Chickpea Salad Bowl").build()
+                RecipeSummaryResponse.builder().id(2L).title("Chickpea Salad Bowl").build()
         ));
 
         mockMvc.perform(get("/api/recipes/seasonal").param("season", "summer"))
@@ -132,7 +134,7 @@ class RecipeControllerTest {
     @Test
     void weatherEndpointReturnsWeatherBasedRecipes() throws Exception {
         when(recipeService.getWeatherSuggestions("cold")).thenReturn(List.of(
-                RecipeResponse.builder().id(1L).title("Garlic Butter Ramen").build()
+                RecipeSummaryResponse.builder().id(1L).title("Garlic Butter Ramen").build()
         ));
 
         mockMvc.perform(get("/api/recipes/weather").param("type", "cold"))
@@ -143,7 +145,7 @@ class RecipeControllerTest {
     @Test
     void occasionEndpointReturnsOccasionRecipes() throws Exception {
         when(recipeService.getOccasionSuggestions("date-night")).thenReturn(List.of(
-                RecipeResponse.builder().id(5L).title("Budget Tomato Pasta").build()
+                RecipeSummaryResponse.builder().id(5L).title("Budget Tomato Pasta").build()
         ));
 
         mockMvc.perform(get("/api/recipes/occasion").param("type", "date-night"))
@@ -189,6 +191,28 @@ class RecipeControllerTest {
                                 .andExpect(status().isOk())
                                 .andExpect(jsonPath("$.Produce[0]").value("tomato"))
                                 .andExpect(jsonPath("$.['Pantry and Grains'][0]").value("rice"));
+        }
+
+        @Test
+        void groceryListEndpointReturnsPagedItems() throws Exception {
+                PagedResponse<String> response = PagedResponse.<String>builder()
+                                .items(List.of("tomato", "onion"))
+                                .page(0)
+                                .size(25)
+                                .totalElements(40)
+                                .hasNext(true)
+                                .build();
+                when(recipeService.generateGroceryListPage(List.of(1L, 2L), 0, 25)).thenReturn(response);
+
+                mockMvc.perform(post("/api/recipes/grocery-list")
+                                                .param("page", "0")
+                                                .param("size", "25")
+                                                .contentType(MediaType.APPLICATION_JSON)
+                                                .content("{\"recipeIds\":[1,2]}"))
+                                .andExpect(status().isOk())
+                                .andExpect(jsonPath("$.items[0]").value("tomato"))
+                                .andExpect(jsonPath("$.hasNext").value(true))
+                                .andExpect(jsonPath("$.size").value(25));
         }
 
         @Test

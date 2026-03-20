@@ -3,6 +3,7 @@ package com.cookmate.controller;
 import com.cookmate.dto.CookLogRequest;
 import com.cookmate.dto.CookLogResponse;
 import com.cookmate.dto.CookLogSummaryResponse;
+import com.cookmate.dto.PagedResponse;
 import com.cookmate.service.CookLogService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -10,9 +11,8 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
-
-import java.util.List;
 
 @RestController
 @RequestMapping("/api/cook-log")
@@ -27,8 +27,11 @@ public class CookLogController {
     }
 
     @GetMapping
-    public ResponseEntity<List<CookLogResponse>> history() {
-        return ResponseEntity.ok(cookLogService.getHistory());
+    public ResponseEntity<PagedResponse<CookLogResponse>> history(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size
+    ) {
+        return ResponseEntity.ok(cookLogService.getHistory(page, size));
     }
 
     @GetMapping("/summary")

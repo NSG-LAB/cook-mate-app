@@ -14,9 +14,14 @@ const BARCODE_MAP = {
   '8904433221100': 'tomato',
 };
 
+const GROCERY_PAGE_SIZE = 25;
+
 export default function GroceryScreen() {
   const { selectedRecipeIds, budget, spentBudget, setSpentBudget, purchaseHistory, recordPurchasedItem, addPantryItem } = useApp();
   const [items, setItems] = useState([]);
+  const [groceryPage, setGroceryPage] = useState(0);
+  const [groceryHasNext, setGroceryHasNext] = useState(false);
+  const [groceryLoadingMore, setGroceryLoadingMore] = useState(false);
   const [groupedItems, setGroupedItems] = useState({});
   const [barcode, setBarcode] = useState('');
   const [plannedSpend, setPlannedSpend] = useState(0);
@@ -85,22 +90,53 @@ export default function GroceryScreen() {
 
     setLoading(true);
     setMessage('');
+    setGroceryPage(0);
+    setGroceryHasNext(false);
     try {
       const [groceryRes, groupedRes, nutritionRes, planRes] = await Promise.all([
-        api.post('/recipes/grocery-list', { recipeIds: selectedRecipeIds }),
+        api.post('/recipes/grocery-list', { recipeIds: selectedRecipeIds }, { params: { page: 0, size: GROCERY_PAGE_SIZE } }),
         api.post('/recipes/grocery-list-grouped', { recipeIds: selectedRecipeIds }),
         api.post('/recipes/nutrition-summary', { recipeIds: selectedRecipeIds }),
         api.post('/recipes/planned-spend', { recipeIds: selectedRecipeIds }),
       ]);
 
-      setItems(groceryRes.data.items || []);
+      const groceryData = groceryRes.data || {};
+      const initialItems = Array.isArray(groceryData.items) ? groceryData.items : [];
+      setItems(initialItems);
+      setGroceryPage((groceryData.page ?? 0) + 1);
+      setGroceryHasNext(Boolean(groceryData.hasNext));
       setGroupedItems(groupedRes.data || {});
       setSummary(nutritionRes.data);
       setPlannedSpend(planRes.data?.totalEstimatedCost || 0);
     } catch (error) {
       setMessage(error?.response?.data?.message || 'Unable to generate groceries right now.');
+      setItems([]);
+      setGroceryHasNext(false);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadMoreItems = async () => {
+    if (!groceryHasNext || groceryLoadingMore || !selectedRecipeIds.length) {
+      return;
+    }
+    setGroceryLoadingMore(true);
+    setMessage('');
+    try {
+      const { data } = await api.post(
+        '/recipes/grocery-list',
+        { recipeIds: selectedRecipeIds },
+        { params: { page: groceryPage, size: GROCERY_PAGE_SIZE } }
+      );
+      const moreItems = Array.isArray(data?.items) ? data.items : [];
+      setItems((prev) => [...prev, ...moreItems]);
+      setGroceryPage((data?.page ?? groceryPage) + 1);
+      setGroceryHasNext(Boolean(data?.hasNext));
+    } catch (error) {
+      setMessage(error?.response?.data?.message || 'Unable to load more groceries right now.');
+    } finally {
+      setGroceryLoadingMore(false);
     }
   };
 
@@ -216,6 +252,17 @@ export default function GroceryScreen() {
           </View>
         )}
         ListEmptyComponent={<Text style={styles.info}>{loading ? 'Building grocery list...' : 'No grocery items yet.'}</Text>}
+        ListFooterComponent={
+          groceryHasNext ? (
+            <TouchableOpacity style={styles.loadMoreBtn} onPress={loadMoreItems} disabled={groceryLoadingMore}>
+              {groceryLoadingMore ? (
+                <ActivityIndicator color="#fff" />
+              ) : (
+                <Text style={styles.loadMoreText}>Load more items</Text>
+              )}
+            </TouchableOpacity>
+          ) : null
+        }
       />
     </View>
   );
@@ -266,6 +313,8 @@ const styles = StyleSheet.create({
   itemText: { color: palette.text, fontSize: 16, marginLeft: 8 },
   boughtBtn: { marginLeft: 'auto', backgroundColor: '#0F766E', paddingHorizontal: 10, paddingVertical: 6, borderRadius: 8 },
   boughtBtnText: { color: '#fff', fontWeight: '700', fontSize: 12 },
+  loadMoreBtn: { backgroundColor: palette.secondary, borderRadius: 12, paddingVertical: 12, alignItems: 'center', marginTop: 12 },
+  loadMoreText: { color: '#fff', fontWeight: '700' },
   disabledBtn: { opacity: 0.7 },
   message: { color: '#E67E22', marginBottom: 12, textAlign: 'center' },
 });

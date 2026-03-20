@@ -11,7 +11,8 @@ import java.util.List;
     name = "recipes",
     indexes = {
         @Index(name = "idx_recipes_region_status", columnList = "region, moderation_status"),
-        @Index(name = "idx_recipes_cost_status", columnList = "estimated_cost, moderation_status")
+        @Index(name = "idx_recipes_cost_status", columnList = "estimated_cost, moderation_status"),
+        @Index(name = "idx_recipes_region_cost", columnList = "region, estimated_cost")
     }
 )
 @Getter

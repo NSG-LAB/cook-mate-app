@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   FlatList,
@@ -26,42 +26,91 @@ const formatDate = (value) => {
   }
 };
 
+const PAGE_SIZE = 20;
+
 export default function CookingHistoryScreen() {
   const [entries, setEntries] = useState([]);
   const [summary, setSummary] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+  const [page, setPage] = useState(0);
+  const [hasNext, setHasNext] = useState(true);
   const [error, setError] = useState('');
 
-  const loadHistory = async () => {
-    setLoading(true);
-    setError('');
+  const loadSummary = useCallback(async () => {
     try {
-      const [historyRes, summaryRes] = await Promise.all([
-        api.get('/cook-log'),
-        api.get('/cook-log/summary'),
-      ]);
-      setEntries(Array.isArray(historyRes.data) ? historyRes.data : []);
-      setSummary(summaryRes.data || null);
+      const { data } = await api.get('/cook-log/summary');
+      setSummary(data || null);
+    } catch (err) {
+      setSummary(null);
+    }
+  }, []);
+
+  const handleFetch = useCallback(async (mode = 'initial') => {
+    const reset = mode !== 'append';
+
+    if (mode === 'append') {
+      if (!hasNext || loadingMore) {
+        return;
+      }
+      setLoadingMore(true);
+    } else if (mode === 'refresh') {
+      if (refreshing) {
+        return;
+      }
+      setRefreshing(true);
+    } else {
+      if (loading) {
+        return;
+      }
+      setLoading(true);
+      setError('');
+    }
+
+    const targetPage = reset ? 0 : page;
+
+    try {
+      const { data } = await api.get('/cook-log', {
+        params: { page: targetPage, size: PAGE_SIZE },
+      });
+      const items = Array.isArray(data?.items) ? data.items : [];
+      setEntries((prev) => (reset ? items : [...prev, ...items]));
+      setPage((data?.page ?? targetPage) + 1);
+      setHasNext(Boolean(data?.hasNext));
     } catch (err) {
       setError(err?.response?.data?.message || 'Unable to load cook log.');
-      setEntries([]);
+      if (reset) {
+        setEntries([]);
+        setHasNext(false);
+      }
     } finally {
-      setLoading(false);
+      if (mode === 'append') {
+        setLoadingMore(false);
+      } else if (mode === 'refresh') {
+        setRefreshing(false);
+      } else {
+        setLoading(false);
+      }
     }
-  };
+  }, [hasNext, loading, loadingMore, page, refreshing]);
 
-  const refresh = async () => {
-    setRefreshing(true);
-    await loadHistory();
-    setRefreshing(false);
-  };
+  const handleFetchRef = useRef(handleFetch);
+
+  useEffect(() => {
+    handleFetchRef.current = handleFetch;
+  }, [handleFetch]);
 
   useFocusEffect(
     useCallback(() => {
-      loadHistory();
-    }, [])
+      handleFetchRef.current('initial');
+      loadSummary();
+    }, [loadSummary])
   );
+
+  const refresh = useCallback(async () => {
+    await Promise.all([handleFetch('refresh'), loadSummary()]);
+  }, [handleFetch, loadSummary]);
 
   const renderEntry = ({ item }) => (
     <View style={styles.entryCard}>
@@ -134,6 +183,15 @@ export default function CookingHistoryScreen() {
         keyExtractor={(item) => String(item.id)}
         renderItem={renderEntry}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={refresh} />}
+        onEndReached={() => handleFetch('append')}
+        onEndReachedThreshold={0.4}
+        ListFooterComponent={
+          loadingMore ? (
+            <View style={styles.footer}>
+              <ActivityIndicator color={palette.primary} />
+            </View>
+          ) : null
+        }
         ListEmptyComponent={<Text style={styles.empty}>Cook a recipe and tap "Mark As Cooked" to build your log.</Text>}
       />
     </View>
@@ -185,4 +243,5 @@ const styles = StyleSheet.create({
   timerPill: { backgroundColor: palette.secondary },
   timerText: { color: '#fff', marginLeft: 6 },
   empty: { textAlign: 'center', color: '#6B7280', marginTop: 40 },
+  footer: { paddingVertical: 16 },
 });

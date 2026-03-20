@@ -111,10 +111,12 @@ After the database is reachable, start the API:
 
 ```bash
 cd backend
-mvn spring-boot:run
+mvn spring-boot:run -Dspring-boot.run.profiles=prod
 ```
 
 Backend runs at `http://localhost:8080`.
+
+> Tip: drop the `-Dspring-boot.run.profiles=prod` flag only when you need noisier dev logging.
 
 ### Seeded data
 
@@ -150,7 +152,7 @@ This project uses Expo, so on Windows you should use an Android emulator.
 
 ```bash
 cd backend
-mvn spring-boot:run
+mvn spring-boot:run -Dspring-boot.run.profiles=prod
 ```
 
 ### 2) Start Android Emulator

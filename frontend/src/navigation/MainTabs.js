@@ -41,6 +41,7 @@ export default function MainTabs() {
   return (
     <Tab.Navigator
       screenOptions={({ route }) => ({
+        lazy: true,
         headerTitleAlign: 'center',
         tabBarActiveTintColor: palette.primary,
         tabBarInactiveTintColor: palette.muted,

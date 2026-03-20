@@ -1,11 +1,13 @@
 package com.cookmate.service;
 
 import com.cookmate.dto.NutritionSummaryResponse;
+import com.cookmate.dto.PagedResponse;
 import com.cookmate.dto.RecipeModerationRequest;
 import com.cookmate.dto.RecipePrintResponse;
 import com.cookmate.dto.RecipeRemixRequest;
 import com.cookmate.dto.RecipeRemixResponse;
 import com.cookmate.dto.RecipeResponse;
+import com.cookmate.dto.RecipeSummaryResponse;
 import com.cookmate.dto.RecipeUpdateRequest;
 import com.cookmate.dto.RecipeVersionResponse;
 import com.cookmate.dto.VideoStepLinkResponse;
@@ -15,6 +17,8 @@ import com.cookmate.entity.RecipeVersion;
 import com.cookmate.repository.RecipeRepository;
 import com.cookmate.repository.RecipeVersionRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
@@ -33,14 +37,16 @@ public class RecipeService {
     private final RecipeVersionRepository recipeVersionRepository;
     private static final int MAX_SUGGESTION_CANDIDATES = 200;
 
-    public List<RecipeResponse> getAll(String region) {
+    @Cacheable(cacheNames = "recipes:list", key = "#region == null || #region.isBlank() ? 'all' : #region.toLowerCase()")
+    public List<RecipeSummaryResponse> getAll(String region) {
         List<Recipe> recipes = (region == null || region.isBlank())
             ? recipeRepository.findByModerationStatus(RecipeModerationStatus.PUBLISHED)
             : recipeRepository.findByRegionIgnoreCaseAndModerationStatus(region, RecipeModerationStatus.PUBLISHED);
-        return recipes.stream().map(recipe -> toResponse(recipe, null)).toList();
+        return recipes.stream().map(recipe -> toSummaryResponse(recipe, null)).toList();
     }
 
-    public List<RecipeResponse> getByBudget(Integer budget, String region, boolean quickOnly) {
+    @Cacheable(cacheNames = "recipes:budget", key = "T(String).valueOf(#budget) + ':' + (#region == null ? '' : #region.toLowerCase()) + ':' + #quickOnly")
+    public List<RecipeSummaryResponse> getByBudget(Integer budget, String region, boolean quickOnly) {
         Integer maxCookTime = quickOnly ? 15 : null;
         String normalizedRegion = normalizeRegion(region);
         Pageable pageable = PageRequest.of(0, MAX_SUGGESTION_CANDIDATES, Sort.by(Sort.Direction.ASC, "estimatedCost"));
@@ -54,12 +60,12 @@ public class RecipeService {
         );
 
         return recipes.stream()
-            .map(recipe -> toResponse(recipe, null))
-            .sorted(Comparator.comparingInt(RecipeResponse::getEstimatedCost))
+            .map(recipe -> toSummaryResponse(recipe, null))
+            .sorted(Comparator.comparingInt(RecipeSummaryResponse::getEstimatedCost))
             .toList();
     }
 
-    public List<RecipeResponse> getByIngredients(List<String> ingredients) {
+    public List<RecipeSummaryResponse> getByIngredients(List<String> ingredients) {
         Set<String> lower = ingredients == null ? Set.of() : ingredients.stream()
             .map(String::trim)
             .map(String::toLowerCase)
@@ -78,13 +84,14 @@ public class RecipeService {
         );
 
         return matches.stream()
-            .map(recipe -> toResponse(recipe, lower))
+            .map(recipe -> toSummaryResponse(recipe, lower))
             .filter(r -> r.getIngredientMatchPercent() != null && r.getIngredientMatchPercent() > 0)
-            .sorted(Comparator.comparingInt(RecipeResponse::getIngredientMatchPercent).reversed())
+            .sorted(Comparator.comparingInt(RecipeSummaryResponse::getIngredientMatchPercent).reversed())
             .toList();
     }
 
-            public List<RecipeResponse> getCookAgainSuggestions(List<Long> cookedRecipeIds) {
+            @Cacheable(cacheNames = "recipes:cookAgain", key = "'cookAgain:' + (#cookedRecipeIds == null ? 'none' : #cookedRecipeIds.toString())")
+            public List<RecipeSummaryResponse> getCookAgainSuggestions(List<Long> cookedRecipeIds) {
             if (cookedRecipeIds == null || cookedRecipeIds.isEmpty()) {
                 return List.of();
             }
@@ -96,11 +103,12 @@ public class RecipeService {
 
             return recipeRepository.findAllById(cookedRecipeIds).stream()
                 .sorted(Comparator.comparingInt(r -> rank.getOrDefault(r.getId(), Integer.MAX_VALUE)))
-                .map(recipe -> toResponse(recipe, null))
+                .map(recipe -> toSummaryResponse(recipe, null))
                 .toList();
             }
 
-            public List<RecipeResponse> getSeasonalSuggestions(String seasonParam) {
+            @Cacheable(cacheNames = "recipes:seasonal", key = "#seasonParam == null || #seasonParam.isBlank() ? 'auto' : #seasonParam.toLowerCase()")
+            public List<RecipeSummaryResponse> getSeasonalSuggestions(String seasonParam) {
             String season = seasonParam == null || seasonParam.isBlank() ? detectSeason() : seasonParam.trim().toLowerCase();
             Set<String> seasonalIngredients = switch (season) {
                 case "spring" -> Set.of("tomato", "lemon", "cucumber", "carrot");
@@ -112,11 +120,12 @@ public class RecipeService {
 
             return getPublishedSnapshot().stream()
                 .filter(recipe -> containsAnyIngredient(recipe, seasonalIngredients))
-                .map(recipe -> toResponse(recipe, null))
+                .map(recipe -> toSummaryResponse(recipe, null))
                 .toList();
             }
 
-            public List<RecipeResponse> getWeatherSuggestions(String type) {
+            @Cacheable(cacheNames = "recipes:weather", key = "#type == null ? 'mild' : #type.toLowerCase()")
+            public List<RecipeSummaryResponse> getWeatherSuggestions(String type) {
             String weatherType = type == null ? "mild" : type.trim().toLowerCase();
             return getPublishedSnapshot().stream()
                 .filter(recipe -> switch (weatherType) {
@@ -131,11 +140,12 @@ public class RecipeService {
                             || (recipe.getIngredients() != null && recipe.getIngredients().stream().anyMatch(i -> i.toLowerCase().contains("chili")));
                     default -> true;
                 })
-                .map(recipe -> toResponse(recipe, null))
+                .map(recipe -> toSummaryResponse(recipe, null))
                 .toList();
             }
 
-            public List<RecipeResponse> getOccasionSuggestions(String type) {
+            @Cacheable(cacheNames = "recipes:occasion", key = "#type == null ? 'everyday' : #type.toLowerCase()")
+            public List<RecipeSummaryResponse> getOccasionSuggestions(String type) {
             String occasion = type == null ? "everyday" : type.trim().toLowerCase();
 
             return getPublishedSnapshot().stream()
@@ -146,7 +156,7 @@ public class RecipeService {
                     case "meal-prep-sunday" -> recipe.getCalories() >= 380 && recipe.getCookTimeMinutes() >= 10;
                     default -> true;
                 })
-                .map(recipe -> toResponse(recipe, null))
+                .map(recipe -> toSummaryResponse(recipe, null))
                 .toList();
             }
 
@@ -217,6 +227,7 @@ public class RecipeService {
                 .toList();
     }
 
+    @CacheEvict(cacheNames = {"recipes:list","recipes:budget","recipes:fridge","recipes:cookAgain","recipes:seasonal","recipes:weather","recipes:occasion"}, allEntries = true)
     public RecipeResponse moderateRecipe(Long id, RecipeModerationRequest request) {
         Recipe recipe = recipeRepository.findById(Objects.requireNonNull(id))
                 .orElseThrow(() -> new NoSuchElementException("Recipe not found"));
@@ -253,6 +264,26 @@ public class RecipeService {
                 .collect(Collectors.toCollection(TreeSet::new))
                 .stream()
                 .toList();
+    }
+
+    public PagedResponse<String> generateGroceryListPage(List<Long> recipeIds, int page, int size) {
+        List<String> items = generateGroceryList(recipeIds);
+        int safePage = Math.max(page, 0);
+        int safeSize = Math.min(Math.max(size, 1), 100);
+        int start = safePage * safeSize;
+        if (start >= items.size()) {
+            start = items.size();
+        }
+        int end = Math.min(start + safeSize, items.size());
+        List<String> slice = items.subList(start, end);
+
+        return PagedResponse.<String>builder()
+                .items(slice)
+                .page(safePage)
+                .size(safeSize)
+                .totalElements(items.size())
+                .hasNext(end < items.size())
+                .build();
     }
 
     public Map<String, List<String>> generateGroceryListByAisle(List<Long> recipeIds) {
@@ -301,6 +332,7 @@ public class RecipeService {
         return toResponse(recipe, null);
     }
 
+        @CacheEvict(cacheNames = {"recipes:list","recipes:budget","recipes:fridge","recipes:cookAgain","recipes:seasonal","recipes:weather","recipes:occasion"}, allEntries = true)
         public RecipeResponse createRecipe(RecipeUpdateRequest request) {
         Recipe recipe = new Recipe();
         recipe.setTitle((request.getTitle() == null || request.getTitle().isBlank()) ? "Untitled Recipe" : request.getTitle().trim());
@@ -349,6 +381,7 @@ public class RecipeService {
         return toResponse(saved, null);
         }
 
+    @CacheEvict(cacheNames = {"recipes:list","recipes:budget","recipes:fridge","recipes:cookAgain","recipes:seasonal","recipes:weather","recipes:occasion"}, allEntries = true)
     public RecipeResponse updateRecipe(Long id, RecipeUpdateRequest request) {
         Recipe recipe = recipeRepository.findById(Objects.requireNonNull(id))
                 .orElseThrow(() -> new NoSuchElementException("Recipe not found"));
@@ -495,15 +528,8 @@ public class RecipeService {
     }
 
     private RecipeResponse toResponse(Recipe recipe, Set<String> fridgeIngredients) {
-        Integer matchPercent = null;
         List<String> ingredients = recipe.getIngredients() == null ? List.of() : recipe.getIngredients();
-        if (fridgeIngredients != null && !ingredients.isEmpty()) {
-            long matched = ingredients.stream()
-                    .map(String::toLowerCase)
-                    .filter(fridgeIngredients::contains)
-                    .count();
-            matchPercent = (int) Math.round((matched * 100.0) / ingredients.size());
-        }
+        Integer matchPercent = computeMatchPercent(ingredients, fridgeIngredients);
 
         int prepTime = resolvePrepMinutes(recipe);
         String difficulty = resolveDifficulty(recipe);
@@ -535,6 +561,27 @@ public class RecipeService {
                 .moderationNotes(recipe.getModerationNotes())
                 .moderationDecisionBy(recipe.getModerationDecisionBy())
                 .moderationDecisionAt(recipe.getModerationDecisionAt())
+                .build();
+    }
+
+    private RecipeSummaryResponse toSummaryResponse(Recipe recipe, Set<String> fridgeIngredients) {
+        List<String> ingredients = recipe.getIngredients() == null ? List.of() : recipe.getIngredients();
+        Integer matchPercent = computeMatchPercent(ingredients, fridgeIngredients);
+        int prepTime = resolvePrepMinutes(recipe);
+        int cookTime = recipe.getCookTimeMinutes() == null ? 0 : recipe.getCookTimeMinutes();
+
+        return RecipeSummaryResponse.builder()
+                .id(recipe.getId())
+                .title(recipe.getTitle())
+                .region(recipe.getRegion())
+                .prepTimeMinutes(prepTime)
+                .cookTimeMinutes(recipe.getCookTimeMinutes())
+                .totalTimeMinutes(prepTime + cookTime)
+                .difficulty(resolveDifficulty(recipe))
+                .estimatedCost(recipe.getEstimatedCost())
+                .calories(recipe.getCalories())
+                .imageUrl(recipe.getImageUrl())
+                .ingredientMatchPercent(matchPercent)
                 .build();
     }
 
@@ -609,6 +656,18 @@ public class RecipeService {
                             .build();
                 })
                 .toList();
+    }
+
+    private Integer computeMatchPercent(List<String> ingredients, Set<String> fridgeIngredients) {
+        if (fridgeIngredients == null || fridgeIngredients.isEmpty() || ingredients.isEmpty()) {
+            return null;
+        }
+
+        long matched = ingredients.stream()
+                .map(String::toLowerCase)
+                .filter(fridgeIngredients::contains)
+                .count();
+        return (int) Math.round((matched * 100.0) / ingredients.size());
     }
 
     private List<String> cleanList(List<String> values) {

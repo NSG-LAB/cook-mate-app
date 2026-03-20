@@ -3,6 +3,7 @@ package com.cookmate.service;
 import com.cookmate.dto.CookLogRequest;
 import com.cookmate.dto.CookLogResponse;
 import com.cookmate.dto.CookLogSummaryResponse;
+import com.cookmate.dto.PagedResponse;
 import com.cookmate.entity.CookLogEntry;
 import com.cookmate.entity.Recipe;
 import com.cookmate.entity.User;
@@ -10,6 +11,10 @@ import com.cookmate.repository.CookLogRepository;
 import com.cookmate.repository.RecipeRepository;
 import com.cookmate.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -70,13 +75,26 @@ public class CookLogService {
         return toResponse(saved);
     }
 
-    @Transactional(readOnly = true)
-    public List<CookLogResponse> getHistory() {
+        @Transactional(readOnly = true)
+        public PagedResponse<CookLogResponse> getHistory(int page, int size) {
         User user = resolveCurrentUser();
-        return cookLogRepository.findByUserOrderByCookedAtDesc(user).stream()
-                .map(this::toResponse)
-                .toList();
-    }
+        int safePage = Math.max(page, 0);
+        int safeSize = Math.min(Math.max(size, 1), 50);
+        Pageable pageable = PageRequest.of(safePage, safeSize, Sort.by(Sort.Direction.DESC, "cookedAt"));
+
+        Page<CookLogEntry> historyPage = cookLogRepository.findByUserOrderByCookedAtDesc(user, pageable);
+        List<CookLogResponse> items = historyPage.getContent().stream()
+            .map(this::toResponse)
+            .toList();
+
+        return PagedResponse.<CookLogResponse>builder()
+            .items(items)
+            .page(historyPage.getNumber())
+            .size(historyPage.getSize())
+            .totalElements(historyPage.getTotalElements())
+            .hasNext(historyPage.hasNext())
+            .build();
+        }
 
     @Transactional(readOnly = true)
     public CookLogSummaryResponse getSummary() {
