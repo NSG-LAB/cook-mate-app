@@ -10,6 +10,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
+import java.util.Objects;
 
 @Component
 @RequiredArgsConstructor
@@ -214,7 +215,7 @@ public class DataSeeder implements CommandLineRunner {
                         .build()
         );
 
-        recipeRepository.saveAll(seedRecipes);
+        recipeRepository.saveAll(Objects.requireNonNull(seedRecipes));
     }
 
         private void seedDefaultUser() {
@@ -229,6 +230,6 @@ public class DataSeeder implements CommandLineRunner {
                 .password(passwordEncoder.encode("password123"))
                 .build();
 
-        userRepository.save(demoUser);
+                userRepository.save(Objects.requireNonNull(demoUser));
     }
 }

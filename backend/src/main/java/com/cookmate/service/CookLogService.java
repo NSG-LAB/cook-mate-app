@@ -36,12 +36,13 @@ public class CookLogService {
     @Transactional
     public CookLogResponse logCook(CookLogRequest request) {
         Objects.requireNonNull(request, "Cook log request is required");
-        if (request.getRecipeId() == null) {
+        Long recipeId = request.getRecipeId();
+        if (recipeId == null) {
             throw new IllegalArgumentException("recipeId is required");
         }
 
         User user = resolveCurrentUser();
-        Recipe recipe = recipeRepository.findById(request.getRecipeId())
+        Recipe recipe = recipeRepository.findById(recipeId)
                 .orElseThrow(() -> new IllegalArgumentException("Recipe not found"));
 
         LocalDateTime cookedAt = request.getCookedAt() == null ? LocalDateTime.now() : request.getCookedAt();
@@ -65,7 +66,7 @@ public class CookLogService {
                 .recipeImageSnapshot(recipe.getImageUrl())
                 .build();
 
-        CookLogEntry saved = cookLogRepository.save(entry);
+        CookLogEntry saved = cookLogRepository.save(Objects.requireNonNull(entry));
         return toResponse(saved);
     }
 

@@ -9,6 +9,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
+import java.util.Objects;
+
 @Service
 @RequiredArgsConstructor
 public class AuthService {
@@ -26,7 +28,7 @@ public class AuthService {
                 .name(request.getName() == null || request.getName().isBlank() ? "Student" : request.getName())
                 .password(passwordEncoder.encode(request.getPassword()))
                 .build();
-        User savedUser = userRepository.save(user);
+        User savedUser = userRepository.save(Objects.requireNonNull(user));
 
         String token = jwtService.generateToken(savedUser.getEmail());
         return AuthResponse.builder().token(token).email(savedUser.getEmail()).name(savedUser.getName()).build();

@@ -158,8 +158,9 @@ public class RecipeService {
                 .toList();
 
             Recipe base = null;
-            if (request.getBaseRecipeId() != null) {
-                base = recipeRepository.findById(request.getBaseRecipeId()).orElse(null);
+            Long baseRecipeId = request.getBaseRecipeId();
+            if (baseRecipeId != null) {
+                base = recipeRepository.findById(baseRecipeId).orElse(null);
             }
 
             if (base == null && !available.isEmpty()) {
@@ -353,7 +354,7 @@ public class RecipeService {
                 .orElseThrow(() -> new NoSuchElementException("Recipe not found"));
 
         int currentVersion = recipe.getVersionNumber() == null ? 1 : recipe.getVersionNumber();
-        recipeVersionRepository.save(RecipeVersion.builder()
+        RecipeVersion versionSnapshot = RecipeVersion.builder()
                 .recipeId(recipe.getId())
                 .versionNumber(currentVersion)
                 .title(recipe.getTitle())
@@ -362,7 +363,9 @@ public class RecipeService {
                 .cookTimeMinutes(recipe.getCookTimeMinutes())
                 .updatedBy(request.getUpdatedBy() == null || request.getUpdatedBy().isBlank() ? "user" : request.getUpdatedBy())
                 .updatedAt(LocalDateTime.now())
-                .build());
+            .build();
+
+        recipeVersionRepository.save(Objects.requireNonNull(versionSnapshot));
 
         if (request.getTitle() != null && !request.getTitle().isBlank()) {
             recipe.setTitle(request.getTitle().trim());
