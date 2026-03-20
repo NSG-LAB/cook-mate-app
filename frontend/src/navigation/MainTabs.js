@@ -1,6 +1,7 @@
 import React from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import HomeScreen from '../screens/HomeScreen';
 import IngredientsScreen from '../screens/IngredientsScreen';
@@ -14,6 +15,8 @@ import { palette } from '../theme/colors';
 const Tab = createBottomTabNavigator();
 
 export default function MainTabs() {
+  const insets = useSafeAreaInsets();
+
   const iconForRoute = (routeName) => {
     switch (routeName) {
       case 'Home':
@@ -48,11 +51,11 @@ export default function MainTabs() {
           borderTopColor: 'transparent',
           elevation: 10,
           shadowColor: '#000',
-          height: 60,
+          height: 60 + insets.bottom,
           marginHorizontal: 18,
-          marginBottom: 12,
+          marginBottom: Math.max(12, insets.bottom + 12),
           borderRadius: 999,
-          paddingBottom: 6,
+          paddingBottom: Math.max(6, insets.bottom + 6),
           paddingTop: 6,
         },
         tabBarIcon: ({ color, size, focused }) => (
