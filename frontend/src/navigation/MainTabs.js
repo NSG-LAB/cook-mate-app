@@ -7,6 +7,7 @@ import GroceryScreen from '../screens/GroceryScreen';
 import ProfileScreen from '../screens/ProfileScreen';
 import RecipeSuggestionsScreen from '../screens/RecipeSuggestionsScreen';
 import RecipeEditorScreen from '../screens/RecipeEditorScreen';
+import CookingHistoryScreen from '../screens/CookingHistoryScreen';
 import { palette } from '../theme/colors';
 
 const Tab = createBottomTabNavigator();
@@ -22,6 +23,8 @@ export default function MainTabs() {
         return 'leaf-outline';
       case 'Grocery':
         return 'cart-outline';
+      case 'History':
+        return 'time-outline';
       case 'Recipe Editor':
         return 'create-outline';
       case 'Profile':
@@ -52,6 +55,7 @@ export default function MainTabs() {
       <Tab.Screen name="Suggestions" component={RecipeSuggestionsScreen} />
       <Tab.Screen name="My Ingredients" component={IngredientsScreen} />
       <Tab.Screen name="Grocery" component={GroceryScreen} />
+      <Tab.Screen name="History" component={CookingHistoryScreen} />
       <Tab.Screen name="Recipe Editor" component={RecipeEditorScreen} />
       <Tab.Screen name="Profile" component={ProfileScreen} />
     </Tab.Navigator>

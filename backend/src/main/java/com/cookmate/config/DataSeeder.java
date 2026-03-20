@@ -25,7 +25,6 @@ public class DataSeeder implements CommandLineRunner {
         seedRecipes();
     }
 
-        @SuppressWarnings("null")
         private void seedRecipes() {
         if (recipeRepository.count() > 0) {
             return;
@@ -218,7 +217,6 @@ public class DataSeeder implements CommandLineRunner {
         recipeRepository.saveAll(seedRecipes);
     }
 
-        @SuppressWarnings("null")
         private void seedDefaultUser() {
         final String demoEmail = "student@example.com";
         if (userRepository.existsByEmail(demoEmail)) {

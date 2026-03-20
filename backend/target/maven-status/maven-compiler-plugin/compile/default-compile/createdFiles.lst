@@ -1,4 +1,4 @@
-com\cookmate\dto\RecipeRemixResponse.class
 META-INF\spring-configuration-metadata.json
 com\cookmate\dto\RecipeUpdateRequest.class
 com\cookmate\dto\RecipeRemixResponse$RecipeRemixResponseBuilder.class
+com\cookmate\dto\RecipeRemixResponse.class

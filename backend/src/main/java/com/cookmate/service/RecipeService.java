@@ -1,6 +1,7 @@
 package com.cookmate.service;
 
 import com.cookmate.dto.NutritionSummaryResponse;
+import com.cookmate.dto.RecipeModerationRequest;
 import com.cookmate.dto.RecipePrintResponse;
 import com.cookmate.dto.RecipeRemixRequest;
 import com.cookmate.dto.RecipeRemixResponse;
@@ -9,6 +10,7 @@ import com.cookmate.dto.RecipeUpdateRequest;
 import com.cookmate.dto.RecipeVersionResponse;
 import com.cookmate.dto.VideoStepLinkResponse;
 import com.cookmate.entity.Recipe;
+import com.cookmate.entity.RecipeModerationStatus;
 import com.cookmate.entity.RecipeVersion;
 import com.cookmate.repository.RecipeRepository;
 import com.cookmate.repository.RecipeVersionRepository;
@@ -29,8 +31,8 @@ public class RecipeService {
 
     public List<RecipeResponse> getAll(String region) {
         List<Recipe> recipes = (region == null || region.isBlank())
-                ? recipeRepository.findAll()
-                : recipeRepository.findByRegionIgnoreCase(region);
+            ? recipeRepository.findByModerationStatus(RecipeModerationStatus.PUBLISHED)
+            : recipeRepository.findByRegionIgnoreCaseAndModerationStatus(region, RecipeModerationStatus.PUBLISHED);
         return recipes.stream().map(recipe -> toResponse(recipe, null)).toList();
     }
 
@@ -48,7 +50,7 @@ public class RecipeService {
                 .map(String::toLowerCase)
                 .collect(Collectors.toSet());
 
-        return recipeRepository.findAll().stream()
+        return getPublishedRecipes().stream()
                 .map(recipe -> toResponse(recipe, lower))
                 .filter(r -> r.getIngredientMatchPercent() != null && r.getIngredientMatchPercent() > 0)
                 .sorted(Comparator.comparingInt(RecipeResponse::getIngredientMatchPercent).reversed())
@@ -81,7 +83,7 @@ public class RecipeService {
                 default -> Set.of("tomato", "onion", "garlic", "lemon");
             };
 
-            return recipeRepository.findAll().stream()
+            return getPublishedRecipes().stream()
                 .filter(recipe -> containsAnyIngredient(recipe, seasonalIngredients))
                 .map(recipe -> toResponse(recipe, null))
                 .toList();
@@ -89,7 +91,7 @@ public class RecipeService {
 
             public List<RecipeResponse> getWeatherSuggestions(String type) {
             String weatherType = type == null ? "mild" : type.trim().toLowerCase();
-            return recipeRepository.findAll().stream()
+            return getPublishedRecipes().stream()
                 .filter(recipe -> switch (weatherType) {
                     case "cold" -> recipe.getTitle().toLowerCase().contains("ramen")
                         || recipe.getTitle().toLowerCase().contains("pasta")
@@ -109,7 +111,7 @@ public class RecipeService {
             public List<RecipeResponse> getOccasionSuggestions(String type) {
             String occasion = type == null ? "everyday" : type.trim().toLowerCase();
 
-            return recipeRepository.findAll().stream()
+            return getPublishedRecipes().stream()
                 .filter(recipe -> switch (occasion) {
                     case "date-night" -> Set.of("italian", "japanese", "mediterranean").contains(recipe.getRegion().toLowerCase())
                         && recipe.getEstimatedCost() >= 100;
@@ -134,7 +136,7 @@ public class RecipeService {
             }
 
             if (base == null && !available.isEmpty()) {
-                base = recipeRepository.findAll().stream()
+                base = getPublishedRecipes().stream()
                     .filter(recipe -> containsAnyIngredient(recipe, new HashSet<>(available)))
                     .findFirst()
                     .orElse(null);
@@ -168,6 +170,36 @@ public class RecipeService {
                 .generatedSteps(steps)
                 .build();
             }
+
+    public List<RecipeResponse> getPendingSubmissions() {
+        return recipeRepository.findByModerationStatusOrderByIdAsc(RecipeModerationStatus.PENDING_REVIEW)
+                .stream()
+                .map(recipe -> toResponse(recipe, null))
+                .toList();
+    }
+
+    public RecipeResponse moderateRecipe(Long id, RecipeModerationRequest request) {
+        Recipe recipe = recipeRepository.findById(Objects.requireNonNull(id))
+                .orElseThrow(() -> new NoSuchElementException("Recipe not found"));
+        RecipeModerationRequest moderationRequest = Objects.requireNonNull(request, "Moderation request is required");
+
+        RecipeModerationStatus newStatus = moderationRequest.getStatus() == null
+                ? RecipeModerationStatus.PENDING_REVIEW
+            : moderationRequest.getStatus();
+
+        recipe.setModerationStatus(newStatus);
+        recipe.setModerationNotes(moderationRequest.getModerationNotes());
+        if (newStatus == RecipeModerationStatus.PENDING_REVIEW) {
+            recipe.setModerationDecisionBy(null);
+            recipe.setModerationDecisionAt(null);
+        } else {
+            recipe.setModerationDecisionBy(moderationRequest.getReviewer());
+            recipe.setModerationDecisionAt(LocalDateTime.now());
+        }
+
+        Recipe saved = recipeRepository.save(recipe);
+        return toResponse(saved, null);
+    }
 
     public List<String> generateGroceryList(List<Long> recipeIds) {
         if (recipeIds == null || recipeIds.isEmpty()) {
@@ -259,6 +291,21 @@ public class RecipeService {
             : request.getStepVideoTimestampsSeconds().stream().map(v -> v == null ? 0 : Math.max(v, 0)).toList());
         recipe.setVersionNumber(1);
 
+        boolean communitySubmitted = Boolean.TRUE.equals(request.getCommunitySubmitted());
+        recipe.setCommunitySubmitted(communitySubmitted);
+        if (communitySubmitted) {
+            recipe.setSubmittedBy(request.getSubmittedBy() == null || request.getSubmittedBy().isBlank()
+                    ? "community"
+                    : request.getSubmittedBy().trim());
+            recipe.setModerationStatus(RecipeModerationStatus.PENDING_REVIEW);
+            recipe.setModerationNotes(null);
+            recipe.setModerationDecisionBy(null);
+            recipe.setModerationDecisionAt(null);
+        } else {
+            recipe.setSubmittedBy(null);
+            recipe.setModerationStatus(RecipeModerationStatus.PUBLISHED);
+        }
+
         Recipe saved = recipeRepository.save(recipe);
         return toResponse(saved, null);
         }
@@ -321,6 +368,26 @@ public class RecipeService {
                     .toList());
         }
 
+        if (request.getCommunitySubmitted() != null) {
+            recipe.setCommunitySubmitted(request.getCommunitySubmitted());
+            if (request.getCommunitySubmitted()) {
+                recipe.setModerationStatus(RecipeModerationStatus.PENDING_REVIEW);
+                if (request.getSubmittedBy() != null && !request.getSubmittedBy().isBlank()) {
+                    recipe.setSubmittedBy(request.getSubmittedBy().trim());
+                } else if (recipe.getSubmittedBy() == null || recipe.getSubmittedBy().isBlank()) {
+                    recipe.setSubmittedBy("community");
+                }
+                recipe.setModerationDecisionBy(null);
+                recipe.setModerationDecisionAt(null);
+            } else {
+                recipe.setSubmittedBy(null);
+            }
+        }
+
+        if (request.getSubmittedBy() != null && !request.getSubmittedBy().isBlank()) {
+            recipe.setSubmittedBy(request.getSubmittedBy().trim());
+        }
+
         recipe.setVersionNumber(currentVersion + 1);
         Recipe saved = recipeRepository.save(recipe);
         return toResponse(saved, null);
@@ -381,6 +448,10 @@ public class RecipeService {
                 .build();
     }
 
+    private List<Recipe> getPublishedRecipes() {
+        return recipeRepository.findByModerationStatus(RecipeModerationStatus.PUBLISHED);
+    }
+
     private RecipeResponse toResponse(Recipe recipe, Set<String> fridgeIngredients) {
         Integer matchPercent = null;
         List<String> ingredients = recipe.getIngredients() == null ? List.of() : recipe.getIngredients();
@@ -416,6 +487,12 @@ public class RecipeService {
                 .videoStepLinks(links)
                 .versionNumber(recipe.getVersionNumber() == null ? 1 : recipe.getVersionNumber())
                 .ingredientMatchPercent(matchPercent)
+                .moderationStatus(recipe.getModerationStatus())
+                .communitySubmitted(recipe.isCommunitySubmitted())
+                .submittedBy(recipe.getSubmittedBy())
+                .moderationNotes(recipe.getModerationNotes())
+                .moderationDecisionBy(recipe.getModerationDecisionBy())
+                .moderationDecisionAt(recipe.getModerationDecisionAt())
                 .build();
     }
 

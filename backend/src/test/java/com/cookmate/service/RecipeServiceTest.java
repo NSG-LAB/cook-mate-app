@@ -6,6 +6,7 @@ import com.cookmate.dto.RecipeRemixResponse;
 import com.cookmate.dto.RecipeUpdateRequest;
 import com.cookmate.dto.RecipeVersionResponse;
 import com.cookmate.entity.Recipe;
+import com.cookmate.entity.RecipeModerationStatus;
 import com.cookmate.entity.RecipeVersion;
 import com.cookmate.repository.RecipeRepository;
 import com.cookmate.repository.RecipeVersionRepository;
@@ -153,7 +154,7 @@ class RecipeServiceTest {
                 .steps(List.of("a"))
                 .build();
 
-        when(recipeRepository.findAll()).thenReturn(List.of(ramen, salad));
+        when(recipeRepository.findByModerationStatus(RecipeModerationStatus.PUBLISHED)).thenReturn(List.of(ramen, salad));
 
         List<RecipeResponse> results = recipeService.getWeatherSuggestions("cold");
         assertTrue(results.stream().anyMatch(r -> "Garlic Butter Ramen".equals(r.getTitle())));

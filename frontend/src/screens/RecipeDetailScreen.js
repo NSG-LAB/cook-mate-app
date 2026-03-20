@@ -1,8 +1,11 @@
 import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, Image, Linking, ScrollView, Share, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Alert, Image, Linking, ScrollView, Share, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
+import * as Haptics from 'expo-haptics';
 import { api } from '../services/api';
 import { palette } from '../theme/colors';
 import { useApp } from '../context/AppContext';
+import CookingTimer from '../components/CookingTimer';
 
 export default function RecipeDetailScreen({ route, navigation }) {
   const { id } = route.params;
@@ -22,6 +25,17 @@ export default function RecipeDetailScreen({ route, navigation }) {
   });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [timerSeconds, setTimerSeconds] = useState(0);
+  const [moodTag, setMoodTag] = useState('focused');
+  const [notes, setNotes] = useState('');
+  const [rating, setRating] = useState(5);
+  const [completedSteps, setCompletedSteps] = useState([]);
+  const [loggingCook, setLoggingCook] = useState(false);
+  const [logMessage, setLogMessage] = useState('');
+  const [logIsError, setLogIsError] = useState(false);
+  const moodOptions = ['focused', 'lazy chef', 'celebration'];
+  const totalSteps = recipe?.steps?.length || 0;
+  const completionPercent = totalSteps ? Math.round((completedSteps.length / totalSteps) * 100) : 0;
 
   const fetchRecipe = async () => {
     setLoading(true);
@@ -89,7 +103,66 @@ export default function RecipeDetailScreen({ route, navigation }) {
     await Share.share({ message: printableText || 'No print view available.' });
   };
 
+  const toggleStep = (index) => {
+    setCompletedSteps((prev) => {
+      const exists = prev.includes(index);
+      if (!exists) {
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
+      }
+      return exists ? prev.filter((value) => value !== index) : [...prev, index];
+    });
+  };
+
+  const handleLogCook = async () => {
+    if (!recipe) {
+      return;
+    }
+    setLoggingCook(true);
+    setLogMessage('');
+    setLogIsError(false);
+    try {
+      const minutesSpent = timerSeconds > 0
+        ? Math.max(1, Math.round(timerSeconds / 60))
+        : recipe.totalTimeMinutes || recipe.cookTimeMinutes || 0;
+
+      await api.post('/cook-log', {
+        recipeId: id,
+        minutesSpent,
+        rating,
+        moodTag,
+        notes,
+        usedTimer: timerSeconds > 0,
+        completedSteps: completedSteps.length,
+        totalSteps,
+      });
+
+      addCookedRecipe(id);
+      setLogMessage('Cook log saved. Check the History tab!');
+      setLogIsError(false);
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
+      Alert.alert('Session saved', 'Find this cook in your history timeline.');
+      setNotes('');
+      setCompletedSteps([]);
+      setTimerSeconds(0);
+      setMoodTag('focused');
+      setRating(5);
+    } catch (err) {
+      const message = err?.response?.data?.message || 'Unable to log cook session.';
+      setLogMessage(message);
+      setLogIsError(true);
+    } finally {
+      setLoggingCook(false);
+    }
+  };
+
   useEffect(() => {
+    setCompletedSteps([]);
+    setTimerSeconds(0);
+    setNotes('');
+    setLogMessage('');
+    setLogIsError(false);
+    setMoodTag('focused');
+    setRating(5);
     Promise.all([fetchRecipe(), fetchVersions()]);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
@@ -132,6 +205,7 @@ export default function RecipeDetailScreen({ route, navigation }) {
       </View>
       <Text style={styles.meta}>Prep {recipe.prepTimeMinutes} min • Cook {recipe.cookTimeMinutes} min • Total {recipe.totalTimeMinutes} min</Text>
       <Text style={styles.meta}>₹{recipe.estimatedCost} • {recipe.calories} kcal • {recipe.region}</Text>
+      <CookingTimer onElapsedChange={setTimerSeconds} />
 
       <View style={styles.actionRow}>
         <TouchableOpacity style={styles.editorNavBtn} onPress={() => navigation.navigate('RecipeEditor', { id })}>
@@ -214,9 +288,30 @@ export default function RecipeDetailScreen({ route, navigation }) {
       ) : null}
 
       <Text style={styles.section}>Steps</Text>
-      {recipe.steps.map((step, index) => (
-        <Text key={`${index}-${step}`} style={styles.item}>{index + 1}. {step}</Text>
-      ))}
+      {totalSteps ? (
+        <View style={styles.progressRow}>
+          <Text style={styles.progressText}>{completionPercent}% complete</Text>
+          <Text style={styles.progressMeta}>{completedSteps.length}/{totalSteps} steps checked</Text>
+        </View>
+      ) : null}
+      {recipe.steps.map((step, index) => {
+        const done = completedSteps.includes(index);
+        return (
+          <TouchableOpacity
+            key={`${index}-${step}`}
+            style={[styles.stepItem, done && styles.stepItemDone]}
+            onPress={() => toggleStep(index)}
+          >
+            <Ionicons
+              name={done ? 'checkmark-circle' : 'ellipse-outline'}
+              size={20}
+              color={done ? palette.secondary : '#94A3B8'}
+              style={styles.stepIcon}
+            />
+            <Text style={[styles.stepText, done && styles.stepTextDone]}>{index + 1}. {step}</Text>
+          </TouchableOpacity>
+        );
+      })}
 
       {recipe.videoStepLinks?.length ? (
         <>
@@ -235,15 +330,57 @@ export default function RecipeDetailScreen({ route, navigation }) {
         <Text style={styles.videoText}>Open Step-by-Step Video Guide</Text>
       </TouchableOpacity>
 
+      <View style={styles.sessionCard}>
+        <Text style={styles.sessionTitle}>Session Journal</Text>
+        <Text style={styles.sessionLabel}>How did it feel?</Text>
+        <View style={styles.moodRow}>
+          {moodOptions.map((option) => (
+            <TouchableOpacity
+              key={option}
+              style={[styles.moodChip, moodTag === option && styles.moodChipActive]}
+              onPress={() => setMoodTag(option)}
+            >
+              <Text style={[styles.moodText, moodTag === option && styles.moodTextActive]}>{option}</Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+
+        <Text style={styles.sessionLabel}>Score this cook</Text>
+        <View style={styles.ratingRow}>
+          {[1, 2, 3, 4, 5].map((value) => (
+            <TouchableOpacity key={`rating-${value}`} onPress={() => setRating(value)}>
+              <Ionicons
+                name={value <= rating ? 'star' : 'star-outline'}
+                size={28}
+                color={value <= rating ? '#FACC15' : '#CBD5F5'}
+                style={styles.ratingIcon}
+              />
+            </TouchableOpacity>
+          ))}
+          <Text style={styles.ratingValue}>{rating}/5</Text>
+        </View>
+
+        <Text style={styles.sessionLabel}>Quick notes</Text>
+        <TextInput
+          style={styles.notesInput}
+          value={notes}
+          placeholder="What went well? Any tweaks?"
+          placeholderTextColor="#9CA3AF"
+          multiline
+          onChangeText={setNotes}
+        />
+      </View>
+
       <TouchableOpacity
-        style={styles.cookedBtn}
-        onPress={() => {
-          addCookedRecipe(id);
-          setError('');
-        }}
+        style={[styles.cookedBtn, loggingCook && styles.disabledBtn]}
+        onPress={handleLogCook}
+        disabled={loggingCook}
       >
-        <Text style={styles.cookedBtnText}>Mark As Cooked</Text>
+        <Text style={styles.cookedBtnText}>{loggingCook ? 'Saving...' : 'Mark As Cooked'}</Text>
       </TouchableOpacity>
+      {logMessage ? (
+        <Text style={[styles.logMessage, logIsError ? styles.logMessageError : styles.logMessageSuccess]}>{logMessage}</Text>
+      ) : null}
 
       <Text style={styles.section}>Version History</Text>
       {versions.length ? versions.map((version) => (
@@ -288,8 +425,56 @@ const styles = StyleSheet.create({
   stepLinkText: { color: '#1D4ED8', fontWeight: '700', fontSize: 12 },
   videoBtn: { backgroundColor: palette.secondary, padding: 12, borderRadius: 10, marginTop: 16, alignItems: 'center' },
   videoText: { color: '#fff', fontWeight: '700' },
-  cookedBtn: { backgroundColor: '#0F766E', padding: 12, borderRadius: 10, marginTop: 10, alignItems: 'center' },
+  sessionCard: { borderWidth: 1, borderColor: '#E5E7EB', borderRadius: 14, padding: 14, marginTop: 16, backgroundColor: '#fff' },
+  sessionTitle: { fontSize: 18, fontWeight: '700', color: palette.primaryDark, marginBottom: 8 },
+  sessionLabel: { color: '#4B5563', fontWeight: '600', marginTop: 10, marginBottom: 6 },
+  moodRow: { flexDirection: 'row', flexWrap: 'wrap' },
+  moodChip: {
+    borderWidth: 1,
+    borderColor: palette.border,
+    borderRadius: 999,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    marginRight: 8,
+    marginBottom: 8,
+  },
+  moodChipActive: { backgroundColor: palette.primary, borderColor: palette.primary },
+  moodText: { color: palette.primaryDark, fontWeight: '600' },
+  moodTextActive: { color: '#fff' },
+  ratingRow: { flexDirection: 'row', alignItems: 'center' },
+  ratingIcon: { marginRight: 6 },
+  ratingValue: { marginLeft: 8, fontWeight: '700', color: palette.text },
+  notesInput: {
+    borderWidth: 1,
+    borderColor: palette.border,
+    borderRadius: 10,
+    padding: 10,
+    minHeight: 70,
+    color: palette.text,
+  },
+  cookedBtn: { backgroundColor: '#0F766E', padding: 12, borderRadius: 10, marginTop: 16, alignItems: 'center' },
   cookedBtnText: { color: '#fff', fontWeight: '700' },
+  disabledBtn: { opacity: 0.7 },
+  stepItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    borderRadius: 12,
+    padding: 10,
+    marginBottom: 8,
+    backgroundColor: '#fff',
+  },
+  stepItemDone: { borderColor: palette.secondary, backgroundColor: '#ECFDF5' },
+  stepIcon: { marginRight: 10 },
+  stepText: { color: palette.text, flex: 1 },
+  stepTextDone: { textDecorationLine: 'line-through', color: '#059669' },
+  progressRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 8 },
+  progressText: { fontWeight: '700', color: palette.primaryDark },
+  progressMeta: { color: '#6B7280' },
+  logMessage: { marginTop: 8, textAlign: 'center', fontWeight: '600' },
+  logMessageSuccess: { color: '#059669' },
+  logMessageError: { color: '#DC2626' },
   versionRow: { borderWidth: 1, borderColor: palette.border, borderRadius: 10, padding: 10, marginBottom: 8, backgroundColor: '#fff' },
   versionTitle: { color: palette.text, fontWeight: '700' },
   versionMeta: { color: '#6B7280', marginTop: 3 },

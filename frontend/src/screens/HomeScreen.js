@@ -1,11 +1,24 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, FlatList, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import Slider from '@react-native-community/slider';
 import { api } from '../services/api';
 import RecipeCard from '../components/RecipeCard';
+import HomeWidget from '../components/HomeWidget';
 import { useApp } from '../context/AppContext';
 import { palette } from '../theme/colors';
+
+const formatRelativeCookedAt = (isoDate) => {
+  if (!isoDate) {
+    return 'Log your first cook';
+  }
+  try {
+    const date = new Date(isoDate);
+    return date.toLocaleDateString?.('en-US', { month: 'short', day: 'numeric' }) || date.toDateString();
+  } catch (err) {
+    return 'Recent session';
+  }
+};
 
 export default function HomeScreen({ navigation }) {
   const { budget, setBudget, selectedRecipeIds, setSelectedRecipeIds, streak } = useApp();
@@ -13,6 +26,9 @@ export default function HomeScreen({ navigation }) {
   const [region, setRegion] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [historySummary, setHistorySummary] = useState(null);
+  const [widgetMode, setWidgetMode] = useState('plan');
+  const [shuffleCount, setShuffleCount] = useState(0);
 
   const loadRecipes = async (quickOnly = false) => {
     setLoading(true);
@@ -34,6 +50,91 @@ export default function HomeScreen({ navigation }) {
     loadRecipes(false);
   }, [budget, region]);
 
+  useEffect(() => {
+    const loadSummary = async () => {
+      try {
+        const { data } = await api.get('/cook-log/summary');
+        setHistorySummary(data);
+      } catch (err) {
+        setHistorySummary(null);
+      }
+    };
+    loadSummary();
+  }, []);
+
+  const planWidget = useMemo(() => {
+    if (!recipes.length) {
+      return null;
+    }
+    const prioritized = selectedRecipeIds.length
+      ? recipes.find((recipe) => selectedRecipeIds.includes(recipe.id)) || recipes[0]
+      : recipes[0];
+    if (!prioritized) {
+      return null;
+    }
+    return {
+      recipeId: prioritized.id,
+      title: prioritized.title,
+      subtitle: `${prioritized.region} • ${prioritized.difficulty}`,
+      meta: `${prioritized.totalTimeMinutes} min • ₹${prioritized.estimatedCost}`,
+      imageUrl: prioritized.imageUrl,
+      tagline: selectedRecipeIds.length ? 'Today\'s plan' : 'Quick pick',
+    };
+  }, [recipes, selectedRecipeIds]);
+
+  const historyWidget = useMemo(() => {
+    if (!historySummary?.recentEntries?.length) {
+      return null;
+    }
+    const entry = historySummary.recentEntries[0];
+    return {
+      recipeId: entry.recipeId,
+      title: entry.recipeTitle,
+      subtitle: entry.notes || 'Last logged cook',
+      meta: formatRelativeCookedAt(entry.cookedAt),
+      imageUrl: entry.recipeImage,
+      tagline: 'From your log',
+    };
+  }, [historySummary]);
+
+  const randomWidget = useMemo(() => {
+    if (!recipes.length) {
+      return null;
+    }
+    const index = Math.abs(shuffleCount) % recipes.length;
+    const pick = recipes[index];
+    return pick
+      ? {
+          recipeId: pick.id,
+          title: pick.title,
+          subtitle: `${pick.region} • ${pick.difficulty}`,
+          meta: `${pick.totalTimeMinutes} min • ₹${pick.estimatedCost}`,
+          imageUrl: pick.imageUrl,
+          tagline: 'Kitchen roulette',
+        }
+      : null;
+  }, [recipes, shuffleCount]);
+
+  const activeWidget = useMemo(() => {
+    if (widgetMode === 'history') {
+      return historyWidget;
+    }
+    if (widgetMode === 'random') {
+      return randomWidget;
+    }
+    return planWidget;
+  }, [widgetMode, planWidget, historyWidget, randomWidget]);
+
+  const handleOpenWidget = () => {
+    if (activeWidget?.recipeId) {
+      navigation.navigate('RecipeDetail', { id: activeWidget.recipeId });
+    }
+  };
+
+  const handleShuffleWidget = () => {
+    setShuffleCount((prev) => prev + 1);
+  };
+
   const toggleSelected = (id) => {
     setSelectedRecipeIds((prev) =>
       prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]
@@ -43,7 +144,15 @@ export default function HomeScreen({ navigation }) {
   return (
     <View style={styles.container}>
       <Text style={styles.title}>CookMate Student</Text>
-      <Text style={styles.streak}>🔥 Cooked {streak} days in a row!</Text>
+      <Text style={styles.streak}>🔥 Cooked {historySummary?.streakDays ?? streak} days in a row!</Text>
+
+      <HomeWidget
+        data={activeWidget}
+        onOpen={handleOpenWidget}
+        onShuffle={handleShuffleWidget}
+        mode={widgetMode}
+        setMode={setWidgetMode}
+      />
 
       <View style={styles.statusRow}>
         <View style={[styles.statusCard, styles.cardSpacing]}>

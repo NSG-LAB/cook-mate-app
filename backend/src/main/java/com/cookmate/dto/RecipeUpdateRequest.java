@@ -20,4 +20,6 @@ public class RecipeUpdateRequest {
     private List<String> steps;
     private List<Integer> stepVideoTimestampsSeconds;
     private String updatedBy;
+    private Boolean communitySubmitted;
+    private String submittedBy;
 }

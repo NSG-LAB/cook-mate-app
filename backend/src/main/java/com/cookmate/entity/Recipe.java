@@ -3,6 +3,7 @@ package com.cookmate.entity;
 import jakarta.persistence.*;
 import lombok.*;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 @Entity
@@ -64,4 +65,22 @@ public class Recipe {
     private List<Integer> stepVideoTimestampsSeconds;
 
     private Integer versionNumber;
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    @Builder.Default
+    private RecipeModerationStatus moderationStatus = RecipeModerationStatus.PUBLISHED;
+
+    @Column(nullable = false)
+    @Builder.Default
+    private boolean communitySubmitted = false;
+
+    private String submittedBy;
+
+    @Column(length = 1000)
+    private String moderationNotes;
+
+    private String moderationDecisionBy;
+
+    private LocalDateTime moderationDecisionAt;
 }

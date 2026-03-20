@@ -79,15 +79,16 @@ Student Cooking Assistant App starter project.
 ### UX and Engagement
 
 - Voice command support ("Hey app, what can I cook with eggs?")
-- Cooking history / cook log
-- In-app cooking timer (independent of recipe steps)
-- Widget for home screen (today's meal plan or random recipe)
-- Haptic feedback during step-by-step cooking mode
+- Implemented: Cooking history / cook log (cook-log API + History tab timeline)
+- Implemented: In-app cooking timer (independent of recipe steps)
+- Implemented: Widget for home screen (today's meal plan or random recipe)
+- Implemented: Haptic feedback during step-by-step cooking mode
 - Multilingual support
 
 ### Admin and Backend
 
 - Recipe moderation dashboard for community submissions
+  - In progress: backend API exposes `/api/admin/recipes/pending` plus `/api/admin/recipes/{id}/moderation` for approving or rejecting community posts.
 - Analytics dashboard (most cooked, most saved, drop-off points)
 - A/B testing hooks for recommendation algorithms
 - Ingredient price feed integration (for real cost estimates)
@@ -95,14 +96,14 @@ Student Cooking Assistant App starter project.
 
 ## Database Setup
 
-1. Start MySQL locally (8.x recommended).
+1. Start MySQL locally (8.x recommended) using the default credentials `root@localhost` / `Root@123`.
 2. Create the database once:
 
 ```sql
 CREATE DATABASE cookmate_student;
 ```
 
-3. Update `spring.datasource.username` / `spring.datasource.password` in `backend/src/main/resources/application.properties` so Spring can connect.
+3. Update `spring.datasource.username` / `spring.datasource.password` in `backend/src/main/resources/application.properties` if you change the defaults (`root@localhost` / `Root@123`).
 
 ## Backend Run
 
