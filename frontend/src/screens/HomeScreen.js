@@ -141,43 +141,84 @@ export default function HomeScreen({ navigation }) {
     );
   };
 
+  const greeting = useMemo(() => {
+    const hour = new Date().getHours();
+    const salutation = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening';
+    const headline = hour < 12 ? 'Plan a bold brunch' : hour < 17 ? 'Lunch rush ready' : 'Night prep, bright flavor';
+    const streakDays = historySummary?.streakDays ?? streak;
+    return {
+      salutation,
+      headline,
+      subtitle: `🔥 ${streakDays} day streak · ₹${budget} budget focus`,
+    };
+  }, [historySummary, streak, budget]);
+
   const quickActions = useMemo(
     () => [
       {
         key: 'pantry',
-        title: 'My Pantry',
-        subtitle: 'Update fridge chips',
-        icon: 'leaf-outline',
-        bg: '#ECFCCB',
-        color: '#365314',
+        title: 'Pantry Check',
+        subtitle: 'Update ingredients & swaps',
+        icon: 'nutrition-outline',
+        bg: '#E5FBF5',
+        color: '#0F766E',
+        bubble: 'rgba(15,118,110,0.12)',
         route: 'My Ingredients',
+        cta: 'Manage pantry',
       },
       {
         key: 'history',
-        title: 'History',
-        subtitle: `${historySummary?.sessionsThisWeek ?? 0} cooks this week`,
+        title: 'History Pulse',
+        subtitle: `${historySummary?.sessionsThisWeek ?? 0} cooks logged this week`,
         icon: 'time-outline',
-        bg: '#E0E7FF',
+        bg: '#E7E9FF',
         color: '#312E81',
+        bubble: 'rgba(49,46,129,0.12)',
         route: 'History',
+        cta: 'Open timeline',
       },
       {
         key: 'editor',
-        title: 'Create',
-        subtitle: 'Submit a recipe',
+        title: 'Recipe Lab',
+        subtitle: 'Submit tweaks & feedback',
         icon: 'create-outline',
-        bg: '#FFE4E6',
+        bg: '#FFE9F0',
         color: '#9F1239',
+        bubble: 'rgba(159,18,57,0.12)',
         route: 'Recipe Editor',
+        cta: 'Start drafting',
+      },
+      {
+        key: 'grocery',
+        title: 'Grocery Run',
+        subtitle: 'Smart cart synced to budget',
+        icon: 'cart-outline',
+        bg: '#FFF4E1',
+        color: '#B45309',
+        bubble: 'rgba(180,83,9,0.12)',
+        route: 'Grocery',
+        cta: 'Prep list',
       },
     ],
     [historySummary]
   );
 
+  const regions = ['', 'Indian', 'Japanese', 'Asian'];
+
   const renderHeader = () => (
     <View>
-      <Text style={styles.title}>CookMate Student</Text>
-      <Text style={styles.streak}>🔥 Cooked {historySummary?.streakDays ?? streak} days in a row!</Text>
+      <View style={styles.heroCard}>
+        <View style={styles.heroCopy}>
+          <Text style={styles.heroEyebrow}>{greeting.salutation}</Text>
+          <Text style={styles.heroTitle}>{greeting.headline}</Text>
+          <Text style={styles.heroSubtitle}>{greeting.subtitle}</Text>
+        </View>
+        <View style={styles.heroBadge}>
+          <Text style={styles.heroBadgeLabel}>Streak</Text>
+          <Text style={styles.heroBadgeValue}>{historySummary?.streakDays ?? streak} days</Text>
+          <Text style={styles.heroBadgeHint}>Keep pans sizzling</Text>
+        </View>
+      </View>
 
       <HomeWidget
         data={activeWidget}
@@ -187,67 +228,103 @@ export default function HomeScreen({ navigation }) {
         setMode={setWidgetMode}
       />
 
-      <View style={styles.statusRow}>
-        <View style={[styles.statusCard, styles.cardSpacing]}>
-          <Text style={styles.statusLabel}>Budget Target</Text>
-          <Text style={styles.statusValue}>₹{budget}</Text>
+      <View style={styles.metricRow}>
+        <View style={styles.metricCard}>
+          <Text style={styles.metricLabel}>Budget Focus</Text>
+          <Text style={styles.metricValue}>₹{budget}</Text>
+          <Text style={styles.metricHint}>Drag slider to re-balance</Text>
         </View>
-        <View style={[styles.statusCard, styles.secondaryCard]}>
-          <Text style={styles.statusLabel}>Recipes in Plan</Text>
-          <Text style={styles.statusValue}>{selectedRecipeIds.length}</Text>
+        <View style={[styles.metricCard, styles.metricCardAccent]}>
+          <Text style={styles.metricLabel}>Recipes in Plan</Text>
+          <Text style={styles.metricValue}>{selectedRecipeIds.length}</Text>
+          <Text style={styles.metricHint}>Pin favorites for the week</Text>
         </View>
       </View>
 
-      <View style={styles.quickGrid}>
+      <View style={styles.budgetShell}>
+        <View style={styles.sliderHeader}>
+          <View>
+            <Text style={styles.sliderTitle}>Curate by budget</Text>
+            <Text style={styles.sliderSubtitle}>Instantly tune suggestions</Text>
+          </View>
+          <TouchableOpacity
+            style={[styles.flashBtn, loading && styles.disabledBtn]}
+            onPress={() => loadRecipes(true)}
+            disabled={loading}
+          >
+            {loading ? (
+              <ActivityIndicator size="small" color="#fff" />
+            ) : (
+              <Ionicons name="flash-outline" size={18} color="#fff" />
+            )}
+            <Text style={styles.flashBtnText}>{loading ? 'Loading' : '10-min picks'}</Text>
+          </TouchableOpacity>
+        </View>
+        <Slider
+          minimumValue={500}
+          maximumValue={3000}
+          step={100}
+          minimumTrackTintColor={palette.primary}
+          maximumTrackTintColor={palette.border}
+          thumbTintColor={palette.secondary}
+          value={budget}
+          onValueChange={setBudget}
+        />
+        <View style={styles.sliderMarks}>
+          {[500, 1500, 3000].map((mark) => (
+            <Text key={mark} style={styles.sliderMarkText}>₹{mark}</Text>
+          ))}
+        </View>
+      </View>
+
+      <View style={styles.actionGrid}>
         {quickActions.map((action) => (
           <TouchableOpacity
             key={action.key}
-            style={[styles.quickCard, { backgroundColor: action.bg }]}
+            style={[styles.actionCard, { backgroundColor: action.bg }]}
             onPress={() => navigation.navigate(action.route)}
           >
-            <View style={styles.quickIconWrap}>
-              <Ionicons name={action.icon} size={22} color={action.color} />
+            <View style={[styles.actionIconWrap, { backgroundColor: action.bubble }]}>
+              <Ionicons name={action.icon} size={20} color={action.color} />
             </View>
-            <Text style={styles.quickTitle}>{action.title}</Text>
-            <Text style={styles.quickSubtitle}>{action.subtitle}</Text>
+            <Text style={styles.actionTitle}>{action.title}</Text>
+            <Text style={styles.actionSubtitle}>{action.subtitle}</Text>
+            <Text style={styles.actionCta}>{action.cta}</Text>
           </TouchableOpacity>
         ))}
       </View>
 
-      <View style={styles.row}>
-        {['', 'Indian', 'Japanese', 'Asian'].map((r) => {
+      <View style={styles.regionRow}>
+        {regions.map((r) => {
           const iconName = r === 'Japanese' ? 'restaurant-outline' : r === 'Asian' ? 'leaf-outline' : r === 'Indian' ? 'flame-outline' : 'earth-outline';
+          const isActive = region === r;
           return (
-            <TouchableOpacity key={r || 'all'} style={[styles.chip, region === r && styles.chipActive]} onPress={() => setRegion(r)}>
-              <Ionicons name={iconName} size={16} color={region === r ? '#fff' : palette.primaryDark} />
-              <Text style={[styles.chipText, region === r && styles.chipTextActive]}>{r || 'All'}</Text>
+            <TouchableOpacity
+              key={r || 'all'}
+              style={[styles.regionChip, isActive && styles.regionChipActive]}
+              onPress={() => setRegion(r)}
+            >
+              <Ionicons name={iconName} size={16} color={isActive ? '#fff' : palette.primaryDark} />
+              <Text style={[styles.regionLabel, isActive && styles.regionLabelActive]}>{r || 'All regions'}</Text>
             </TouchableOpacity>
           );
         })}
       </View>
 
-      <View style={styles.sliderRow}>
-        <Text style={styles.budgetText}>Budget: ₹{budget}</Text>
-        <Text style={styles.sliderHint}>drag to tweak suggestions</Text>
+      <View style={styles.sectionHeader}>
+        <View>
+          <Text style={styles.sectionEyebrow}>Fresh for you</Text>
+          <Text style={styles.sectionTitle}>Recommended recipes</Text>
+        </View>
+        <TouchableOpacity style={styles.refreshBtn} onPress={() => loadRecipes(false)}>
+          <Ionicons name="refresh" size={16} color={palette.primaryDark} />
+          <Text style={styles.refreshText}>Refresh</Text>
+        </TouchableOpacity>
       </View>
-      <Slider
-        minimumValue={500}
-        maximumValue={3000}
-        step={100}
-        minimumTrackTintColor={palette.primary}
-        maximumTrackTintColor={palette.border}
-        thumbTintColor={palette.accent}
-        value={budget}
-        onValueChange={setBudget}
-      />
 
-      <TouchableOpacity style={[styles.quickBtn, loading && styles.disabledBtn]} onPress={() => loadRecipes(true)} disabled={loading}>
-        {loading ? <ActivityIndicator color="#fff" /> : <Ionicons name="flash-outline" size={20} color="#fff" />}
-        <Text style={styles.quickBtnText}>{loading ? 'Loading...' : 'Suggest 10-minute recipe'}</Text>
-      </TouchableOpacity>
       <TouchableOpacity style={styles.createBtn} onPress={() => navigation.navigate('Recipe Editor')}>
-        <Ionicons name="add-circle-outline" size={20} color="#fff" />
-        <Text style={styles.createBtnText}>Create Recipe Submission</Text>
+        <Ionicons name="sparkles-outline" size={18} color="#fff" />
+        <Text style={styles.createBtnText}>Share a dorm-friendly recipe</Text>
       </TouchableOpacity>
       {error ? <Text style={styles.errorText}>{error}</Text> : null}
     </View>
@@ -281,78 +358,127 @@ export default function HomeScreen({ navigation }) {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: palette.backgroundAlt },
-  listContent: { paddingHorizontal: 14, paddingTop: 14 },
-  title: { fontSize: 26, fontWeight: '800', color: palette.text },
-  streak: { color: palette.secondary, marginVertical: 8, fontWeight: '700' },
-  statusRow: { flexDirection: 'row', marginBottom: 16 },
-  cardSpacing: { marginRight: 12 },
-  statusCard: {
-    flex: 1,
-    backgroundColor: '#E0E7FF',
-    borderRadius: 16,
-    padding: 16,
+  listContent: { paddingHorizontal: 18, paddingTop: 18 },
+  heroCard: {
+    backgroundColor: palette.card,
+    borderRadius: 28,
+    padding: 20,
+    borderWidth: 1,
+    borderColor: palette.border,
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 16,
   },
-  secondaryCard: { backgroundColor: '#FEF3C7' },
-  statusValue: { fontSize: 24, fontWeight: '800', color: palette.text, marginTop: 6 },
-  statusLabel: { color: palette.muted, fontWeight: '600', letterSpacing: 0.2 },
-  quickGrid: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 16 },
-  quickCard: {
-    flex: 1,
-    borderRadius: 18,
+  heroCopy: { flex: 1, marginRight: 12 },
+  heroEyebrow: { textTransform: 'uppercase', fontSize: 12, letterSpacing: 1, color: palette.muted, fontWeight: '700' },
+  heroTitle: { fontSize: 24, fontWeight: '800', color: palette.text, marginTop: 6 },
+  heroSubtitle: { color: palette.muted, marginTop: 6, fontWeight: '600' },
+  heroBadge: {
+    backgroundColor: palette.backgroundAlt,
     padding: 14,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: palette.border,
+    alignItems: 'center',
+    width: 120,
+  },
+  heroBadgeLabel: { textTransform: 'uppercase', fontSize: 11, fontWeight: '700', color: palette.muted },
+  heroBadgeValue: { fontSize: 20, fontWeight: '800', color: palette.primaryDark, marginVertical: 6 },
+  heroBadgeHint: { fontSize: 12, fontWeight: '600', color: palette.text, textAlign: 'center' },
+  metricRow: { flexDirection: 'row', marginBottom: 18 },
+  metricCard: {
+    flex: 1,
+    backgroundColor: palette.card,
+    borderRadius: 24,
+    padding: 18,
+    borderWidth: 1,
+    borderColor: palette.border,
     marginRight: 12,
   },
-  quickIconWrap: {
-    width: 34,
-    height: 34,
-    borderRadius: 17,
-    backgroundColor: '#fff',
+  metricCardAccent: { backgroundColor: '#FFF8F0', marginRight: 0 },
+  metricLabel: { fontSize: 12, textTransform: 'uppercase', letterSpacing: 0.6, color: palette.muted, fontWeight: '700' },
+  metricValue: { fontSize: 26, fontWeight: '800', color: palette.text, marginVertical: 6 },
+  metricHint: { color: palette.muted, fontWeight: '600' },
+  budgetShell: {
+    backgroundColor: palette.card,
+    borderRadius: 24,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: palette.border,
+    marginBottom: 18,
+  },
+  sliderHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },
+  sliderTitle: { fontSize: 18, fontWeight: '800', color: palette.text },
+  sliderSubtitle: { color: palette.muted, fontWeight: '600', marginTop: 2 },
+  flashBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: palette.primary,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderRadius: 14,
+  },
+  flashBtnText: { color: '#fff', fontWeight: '700', marginLeft: 6 },
+  sliderMarks: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 6 },
+  sliderMarkText: { color: palette.muted, fontSize: 12, fontWeight: '600' },
+  disabledBtn: { opacity: 0.6 },
+  actionGrid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', marginBottom: 18 },
+  actionCard: {
+    width: '48%',
+    borderRadius: 22,
+    padding: 16,
+    marginBottom: 14,
+  },
+  actionIconWrap: {
+    width: 40,
+    height: 40,
+    borderRadius: 14,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 10,
+    marginBottom: 12,
   },
-  quickTitle: { fontWeight: '800', color: palette.text, fontSize: 16 },
-  quickSubtitle: { color: palette.text, opacity: 0.7, marginTop: 4 },
-  row: { flexDirection: 'row', flexWrap: 'wrap', marginBottom: 10 },
-  chip: {
+  actionTitle: { fontSize: 15, fontWeight: '800', color: palette.text },
+  actionSubtitle: { color: palette.text, fontWeight: '600', marginTop: 4 },
+  actionCta: { color: palette.primaryDark, fontWeight: '700', marginTop: 8, textTransform: 'uppercase', fontSize: 11 },
+  regionRow: { flexDirection: 'row', flexWrap: 'wrap', marginBottom: 16 },
+  regionChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
     borderWidth: 1,
     borderColor: palette.border,
     borderRadius: 999,
-    paddingVertical: 6,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    marginRight: 10,
+    marginBottom: 10,
+    backgroundColor: palette.card,
+  },
+  regionChipActive: { backgroundColor: palette.primary, borderColor: palette.primary },
+  regionLabel: { marginLeft: 8, color: palette.text, fontWeight: '700' },
+  regionLabelActive: { color: '#fff' },
+  sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },
+  sectionEyebrow: { textTransform: 'uppercase', letterSpacing: 0.6, fontSize: 11, color: palette.muted, fontWeight: '700' },
+  sectionTitle: { fontSize: 20, fontWeight: '800', color: palette.text },
+  refreshBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: palette.border,
+    borderRadius: 999,
     paddingHorizontal: 12,
-    marginRight: 8,
-    marginBottom: 8,
-    backgroundColor: '#fff',
-    flexDirection: 'row',
-    alignItems: 'center',
+    paddingVertical: 6,
   },
-  chipActive: { backgroundColor: palette.primary },
-  chipText: { color: palette.text, marginLeft: 6 },
-  chipTextActive: { color: '#fff', fontWeight: '700', marginLeft: 6 },
-  sliderRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 },
-  budgetText: { color: palette.text, fontWeight: '800', fontSize: 16 },
-  sliderHint: { color: palette.muted, fontSize: 12 },
-  quickBtn: {
-    backgroundColor: palette.secondary,
-    padding: 12,
-    borderRadius: 12,
-    marginBottom: 12,
-    alignItems: 'center',
-    flexDirection: 'row',
-    justifyContent: 'center',
-  },
-  quickBtnText: { color: '#fff', fontWeight: '700', marginLeft: 8 },
-  disabledBtn: { opacity: 0.7 },
+  refreshText: { color: palette.primaryDark, fontWeight: '700', marginLeft: 6 },
   createBtn: {
-    backgroundColor: '#1D4ED8',
-    padding: 12,
-    borderRadius: 12,
-    marginBottom: 12,
+    backgroundColor: palette.secondary,
+    borderRadius: 18,
+    paddingVertical: 14,
     alignItems: 'center',
     flexDirection: 'row',
     justifyContent: 'center',
+    marginBottom: 12,
   },
-  createBtnText: { color: '#fff', fontWeight: '700', marginLeft: 8 },
-  errorText: { color: '#E74C3C', marginBottom: 8, textAlign: 'left' },
+  createBtnText: { color: '#fff', fontWeight: '800', fontSize: 15, marginLeft: 6 },
+  errorText: { color: '#DC2626', marginTop: 8, fontWeight: '700' },
   emptyText: { color: palette.muted, textAlign: 'center', marginTop: 24, fontWeight: '600' },
 });

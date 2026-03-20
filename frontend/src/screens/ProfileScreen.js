@@ -1,5 +1,5 @@
 import React from 'react';
-import { Alert, StyleSheet, Switch, Text, TouchableOpacity, View } from 'react-native';
+import { Alert, ScrollView, StyleSheet, Switch, Text, TouchableOpacity, View } from 'react-native';
 import { useApp } from '../context/AppContext';
 import { palette } from '../theme/colors';
 
@@ -7,7 +7,11 @@ export default function ProfileScreen() {
   const { user, darkMode, setDarkMode, logout, setStreak, streak, budget, ingredients, selectedRecipeIds } = useApp();
 
   return (
-    <View style={[styles.container, darkMode && styles.darkContainer]}>
+    <ScrollView
+      style={[styles.container, darkMode && styles.darkContainer]}
+      contentContainerStyle={styles.content}
+      showsVerticalScrollIndicator={false}
+    >
       <Text style={[styles.title, darkMode && styles.darkText]}>Profile</Text>
       <Text style={[styles.text, darkMode && styles.darkText]}>Name: {user?.name || 'Student'}</Text>
       <Text style={[styles.text, darkMode && styles.darkText]}>Email: {user?.email || '-'}</Text>
@@ -55,12 +59,13 @@ export default function ProfileScreen() {
       <TouchableOpacity style={styles.logoutBtn} onPress={logout}>
         <Text style={styles.btnText}>Logout</Text>
       </TouchableOpacity>
-    </View>
+    </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: palette.backgroundAlt, padding: 16 },
+  container: { flex: 1, backgroundColor: palette.backgroundAlt },
+  content: { padding: 16, paddingBottom: 48 },
   darkContainer: { backgroundColor: '#1A1A1A' },
   title: { fontSize: 24, fontWeight: '800', color: palette.text, marginBottom: 12 },
   text: { color: palette.text, marginBottom: 8, fontSize: 16 },

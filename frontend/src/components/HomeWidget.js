@@ -4,6 +4,12 @@ import { palette } from '../theme/colors';
 
 const fallbackImage = 'https://images.unsplash.com/photo-1504674900247-0877df9cc836';
 
+const MODE_LABELS = {
+  plan: 'Today',
+  history: 'History',
+  random: 'Shuffle',
+};
+
 export default function HomeWidget({ data, onOpen, onShuffle, mode, setMode }) {
   return (
     <View style={styles.wrapper}>
@@ -15,7 +21,7 @@ export default function HomeWidget({ data, onOpen, onShuffle, mode, setMode }) {
             onPress={() => setMode(option)}
           >
             <Text style={[styles.modeText, mode === option && styles.modeTextActive]}>
-              {option === 'plan' ? 'Today' : option === 'history' ? 'History' : 'Shuffle'}
+              {MODE_LABELS[option]}
             </Text>
           </TouchableOpacity>
         ))}
@@ -28,10 +34,14 @@ export default function HomeWidget({ data, onOpen, onShuffle, mode, setMode }) {
           imageStyle={styles.cardImage}
         >
           <View style={styles.overlay}>
-            <Text style={styles.tag}>{data.tagline}</Text>
+            <View style={styles.tagRow}>
+              <Text style={styles.tag}>{data.tagline}</Text>
+              <Text style={styles.modeBadge}>{MODE_LABELS[mode]}</Text>
+            </View>
             <Text style={styles.title}>{data.title}</Text>
             <Text style={styles.subtitle}>{data.subtitle}</Text>
             {data.meta ? <Text style={styles.meta}>{data.meta}</Text> : null}
+
             <View style={styles.btnRow}>
               <TouchableOpacity style={[styles.btn, styles.primaryBtn]} onPress={onOpen}>
                 <Text style={styles.btnText}>Open Recipe</Text>
@@ -59,46 +69,59 @@ const styles = StyleSheet.create({
     flex: 1,
     borderWidth: 1,
     borderColor: palette.border,
-    paddingVertical: 8,
+    paddingVertical: 10,
     borderRadius: 999,
     marginHorizontal: 4,
     alignItems: 'center',
-    backgroundColor: '#fff',
+    backgroundColor: palette.card,
   },
-  modeChipActive: { backgroundColor: palette.primary },
-  modeText: { color: palette.primaryDark, fontWeight: '600' },
+  modeChipActive: { backgroundColor: palette.primary, borderColor: palette.primary },
+  modeText: { color: palette.primaryDark, fontWeight: '700', textTransform: 'uppercase', fontSize: 12 },
   modeTextActive: { color: '#fff' },
   card: {
-    borderRadius: 20,
+    borderRadius: 24,
     overflow: 'hidden',
-    height: 180,
+    height: 210,
     justifyContent: 'flex-end',
+    borderWidth: 1,
+    borderColor: palette.border,
   },
-  cardImage: { borderRadius: 20 },
-  overlay: { backgroundColor: 'rgba(0,0,0,0.45)', padding: 18 },
-  tag: { color: '#FDE68A', fontWeight: '700', marginBottom: 6, letterSpacing: 1 },
-  title: { color: '#fff', fontSize: 20, fontWeight: '800', marginBottom: 4 },
-  subtitle: { color: '#EDEDED', marginBottom: 4 },
-  meta: { color: '#CBD5F5', fontSize: 12, marginBottom: 12 },
+  cardImage: { borderRadius: 24 },
+  overlay: { backgroundColor: palette.overlay, padding: 20 },
+  tagRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  tag: { color: palette.warning, fontWeight: '800', marginBottom: 6, letterSpacing: 0.8, fontSize: 12 },
+  modeBadge: {
+    color: '#fff',
+    fontWeight: '700',
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.4)',
+    fontSize: 12,
+  },
+  title: { color: '#fff', fontSize: 22, fontWeight: '800', marginBottom: 4, marginTop: 4 },
+  subtitle: { color: '#F5F5F5', marginBottom: 6, fontSize: 14 },
+  meta: { color: '#DCE2F7', fontSize: 13, marginBottom: 16 },
   btnRow: { flexDirection: 'row' },
   btn: {
     flex: 1,
-    paddingVertical: 10,
-    borderRadius: 999,
+    paddingVertical: 12,
+    borderRadius: 14,
     alignItems: 'center',
     marginRight: 8,
   },
-  primaryBtn: { backgroundColor: '#F97316' },
-  secondaryBtn: { backgroundColor: 'rgba(255,255,255,0.15)', marginRight: 0 },
-  btnText: { color: '#fff', fontWeight: '700' },
+  primaryBtn: { backgroundColor: palette.secondary },
+  secondaryBtn: { backgroundColor: 'rgba(255,255,255,0.16)', marginRight: 0 },
+  btnText: { color: '#0f172a', fontWeight: '800', letterSpacing: 0.3 },
   secondaryText: { color: '#fff', fontWeight: '700' },
   emptyCard: {
     borderWidth: 1,
     borderColor: palette.border,
-    borderRadius: 16,
-    padding: 16,
-    backgroundColor: '#fff',
+    borderRadius: 20,
+    padding: 20,
+    backgroundColor: palette.card,
   },
-  emptyTitle: { fontWeight: '700', color: palette.text, marginBottom: 4 },
-  emptySubtitle: { color: '#6B7280' },
+  emptyTitle: { fontWeight: '800', color: palette.text, marginBottom: 6, fontSize: 16 },
+  emptySubtitle: { color: palette.muted },
 });

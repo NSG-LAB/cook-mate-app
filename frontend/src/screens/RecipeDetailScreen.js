@@ -199,12 +199,49 @@ export default function RecipeDetailScreen({ route, navigation }) {
     <ScrollView style={styles.container} contentContainerStyle={{ paddingBottom: 24 }}>
       <Image source={{ uri: recipe.imageUrl }} style={styles.image} />
       <Text style={styles.title}>{recipe.title}</Text>
+      <Text style={styles.subtitle}>Campus favorite • {recipe.region || 'Global fusion'}</Text>
       <View style={styles.tagRow}>
         <Text style={styles.levelTag}>{(recipe.difficulty || 'easy').toUpperCase()}</Text>
         <Text style={styles.versionTag}>Version {recipe.versionNumber || 1}</Text>
+        <Text style={styles.regionTag}>{recipe.region || 'All regions'}</Text>
       </View>
-      <Text style={styles.meta}>Prep {recipe.prepTimeMinutes} min • Cook {recipe.cookTimeMinutes} min • Total {recipe.totalTimeMinutes} min</Text>
-      <Text style={styles.meta}>₹{recipe.estimatedCost} • {recipe.calories} kcal • {recipe.region}</Text>
+      <View style={styles.statGrid}>
+        <View style={styles.statCard}>
+          <Text style={styles.statLabel}>Prep</Text>
+          <Text style={styles.statValue}>{recipe.prepTimeMinutes}m</Text>
+        </View>
+        <View style={styles.statCard}>
+          <Text style={styles.statLabel}>Cook</Text>
+          <Text style={styles.statValue}>{recipe.cookTimeMinutes}m</Text>
+        </View>
+        <View style={[styles.statCard, styles.statCardEnd]}>
+          <Text style={styles.statLabel}>Total</Text>
+          <Text style={styles.statValue}>{recipe.totalTimeMinutes}m</Text>
+        </View>
+      </View>
+      <View style={styles.infoStrip}>
+        <View style={styles.infoItem}>
+          <Ionicons name="wallet-outline" size={18} color={palette.primaryDark} />
+          <View style={styles.infoCopy}>
+            <Text style={styles.infoLabel}>Estimated cost</Text>
+            <Text style={styles.infoValue}>₹{recipe.estimatedCost}</Text>
+          </View>
+        </View>
+        <View style={styles.infoItem}>
+          <Ionicons name="flame-outline" size={18} color={palette.primaryDark} />
+          <View style={styles.infoCopy}>
+            <Text style={styles.infoLabel}>Calories</Text>
+            <Text style={styles.infoValue}>{recipe.calories} kcal</Text>
+          </View>
+        </View>
+        <View style={[styles.infoItem, styles.infoItemEnd]}>
+          <Ionicons name="sparkles-outline" size={18} color={palette.primaryDark} />
+          <View style={styles.infoCopy}>
+            <Text style={styles.infoLabel}>Mood</Text>
+            <Text style={styles.infoValue}>{moodTag}</Text>
+          </View>
+        </View>
+      </View>
       <CookingTimer onElapsedChange={setTimerSeconds} />
 
       <View style={styles.actionRow}>
@@ -395,48 +432,79 @@ export default function RecipeDetailScreen({ route, navigation }) {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: palette.backgroundAlt, padding: 14 },
-  center: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 20 },
-  image: { width: '100%', height: 210, borderRadius: 14, marginBottom: 12 },
-  title: { fontSize: 24, fontWeight: '800', color: palette.text },
-  meta: { marginTop: 6, color: palette.text, marginBottom: 12 },
-  tagRow: { flexDirection: 'row', marginTop: 8, marginBottom: 2 },
-  levelTag: { backgroundColor: '#DBF3E5', color: '#1E7A44', fontWeight: '700', paddingHorizontal: 10, paddingVertical: 5, borderRadius: 999, marginRight: 8 },
-  versionTag: { backgroundColor: '#E9EAFE', color: '#2F3E9E', fontWeight: '700', paddingHorizontal: 10, paddingVertical: 5, borderRadius: 999 },
-  actionRow: { flexDirection: 'row', marginTop: 4, marginBottom: 8 },
-  editorNavBtn: { backgroundColor: '#0F766E', paddingHorizontal: 12, paddingVertical: 8, borderRadius: 8, marginRight: 8 },
+  container: { flex: 1, backgroundColor: palette.background, padding: 16 },
+  center: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 20, backgroundColor: palette.background },
+  image: { width: '100%', height: 220, borderRadius: 24, marginBottom: 16 },
+  title: { fontSize: 28, fontWeight: '800', color: palette.text },
+  subtitle: { color: palette.muted, fontWeight: '600', marginTop: 6, marginBottom: 6 },
+  tagRow: { flexDirection: 'row', flexWrap: 'wrap', marginBottom: 8 },
+  levelTag: { backgroundColor: '#FFE5D5', color: palette.primaryDark, fontWeight: '700', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 999, marginRight: 8, marginBottom: 8 },
+  versionTag: { backgroundColor: palette.backgroundAlt, color: palette.primaryDark, fontWeight: '700', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 999, marginRight: 8, marginBottom: 8 },
+  regionTag: { backgroundColor: '#DCFCE7', color: '#166534', fontWeight: '700', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 999, marginBottom: 8 },
+  statGrid: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 12 },
+  statCard: {
+    flex: 1,
+    backgroundColor: palette.card,
+    borderRadius: 18,
+    paddingVertical: 12,
+    paddingHorizontal: 14,
+    borderWidth: 1,
+    borderColor: palette.border,
+    marginRight: 12,
+  },
+  statCardEnd: { marginRight: 0 },
+  statLabel: { textTransform: 'uppercase', fontSize: 11, color: palette.muted, fontWeight: '700' },
+  statValue: { fontSize: 20, fontWeight: '800', color: palette.text, marginTop: 6 },
+  infoStrip: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    backgroundColor: palette.card,
+    borderRadius: 20,
+    padding: 14,
+    borderWidth: 1,
+    borderColor: palette.border,
+    marginBottom: 16,
+  },
+  infoItem: { flex: 1, flexDirection: 'row', alignItems: 'center', marginRight: 12 },
+  infoCopy: { marginLeft: 10 },
+  infoItemEnd: { marginRight: 0 },
+  infoLabel: { color: palette.muted, fontSize: 12, textTransform: 'uppercase', fontWeight: '700' },
+  infoValue: { color: palette.text, fontWeight: '800', marginTop: 4 },
+  actionRow: { flexDirection: 'row', marginTop: 4, marginBottom: 12 },
+  editorNavBtn: { backgroundColor: palette.secondary, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 10, marginRight: 8 },
   editorNavText: { color: '#fff', fontWeight: '700' },
-  editBtn: { backgroundColor: palette.primary, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 8, marginRight: 8 },
+  editBtn: { backgroundColor: palette.primary, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 10, marginRight: 8 },
   editText: { color: '#fff', fontWeight: '700' },
-  printBtn: { backgroundColor: '#334155', paddingHorizontal: 12, paddingVertical: 8, borderRadius: 8 },
+  printBtn: { backgroundColor: '#1f2937', paddingHorizontal: 12, paddingVertical: 8, borderRadius: 10 },
   printText: { color: '#fff', fontWeight: '700' },
-  editorBox: { borderWidth: 1, borderColor: palette.border, borderRadius: 12, padding: 12, marginBottom: 8, backgroundColor: '#fff' },
-  input: { borderWidth: 1, borderColor: palette.border, borderRadius: 8, paddingHorizontal: 10, paddingVertical: 8, marginBottom: 8, color: palette.text },
-  saveBtn: { backgroundColor: palette.secondary, padding: 10, borderRadius: 8, alignItems: 'center' },
+  editorBox: { borderWidth: 1, borderColor: palette.border, borderRadius: 14, padding: 14, marginBottom: 10, backgroundColor: palette.card },
+  input: { borderWidth: 1, borderColor: palette.border, borderRadius: 10, paddingHorizontal: 12, paddingVertical: 10, marginBottom: 10, color: palette.text },
+  saveBtn: { backgroundColor: palette.secondary, padding: 12, borderRadius: 10, alignItems: 'center' },
   saveBtnText: { color: '#fff', fontWeight: '700' },
-  printCard: { borderWidth: 1, borderColor: '#D8DEE6', borderRadius: 12, padding: 12, marginBottom: 10, backgroundColor: '#fff' },
-  printableText: { color: '#111827', lineHeight: 20 },
-  shareBtn: { marginTop: 10, backgroundColor: '#0F766E', padding: 10, borderRadius: 8, alignItems: 'center' },
+  printCard: { borderWidth: 1, borderColor: palette.border, borderRadius: 14, padding: 14, marginBottom: 12, backgroundColor: palette.card },
+  printableText: { color: palette.text, lineHeight: 20 },
+  shareBtn: { marginTop: 12, backgroundColor: palette.primary, padding: 12, borderRadius: 10, alignItems: 'center' },
   shareBtnText: { color: '#fff', fontWeight: '700' },
-  section: { fontSize: 18, fontWeight: '700', color: palette.primaryDark, marginTop: 10, marginBottom: 6 },
+  section: { fontSize: 18, fontWeight: '700', color: palette.primaryDark, marginTop: 18, marginBottom: 8 },
   item: { color: palette.text, marginBottom: 4, lineHeight: 21 },
   linkWrap: { flexDirection: 'row', flexWrap: 'wrap', marginBottom: 8 },
-  stepLink: { backgroundColor: '#E0E7FF', paddingHorizontal: 10, paddingVertical: 7, borderRadius: 999, marginRight: 6, marginBottom: 6 },
-  stepLinkText: { color: '#1D4ED8', fontWeight: '700', fontSize: 12 },
-  videoBtn: { backgroundColor: palette.secondary, padding: 12, borderRadius: 10, marginTop: 16, alignItems: 'center' },
+  stepLink: { backgroundColor: palette.backgroundAlt, paddingHorizontal: 10, paddingVertical: 7, borderRadius: 999, marginRight: 6, marginBottom: 6 },
+  stepLinkText: { color: palette.primaryDark, fontWeight: '700', fontSize: 12 },
+  videoBtn: { backgroundColor: palette.primary, padding: 12, borderRadius: 14, marginTop: 16, alignItems: 'center' },
   videoText: { color: '#fff', fontWeight: '700' },
-  sessionCard: { borderWidth: 1, borderColor: '#E5E7EB', borderRadius: 14, padding: 14, marginTop: 16, backgroundColor: '#fff' },
+  sessionCard: { borderWidth: 1, borderColor: palette.border, borderRadius: 18, padding: 16, marginTop: 18, backgroundColor: palette.card },
   sessionTitle: { fontSize: 18, fontWeight: '700', color: palette.primaryDark, marginBottom: 8 },
-  sessionLabel: { color: '#4B5563', fontWeight: '600', marginTop: 10, marginBottom: 6 },
+  sessionLabel: { color: palette.muted, fontWeight: '600', marginTop: 10, marginBottom: 6 },
   moodRow: { flexDirection: 'row', flexWrap: 'wrap' },
   moodChip: {
     borderWidth: 1,
     borderColor: palette.border,
     borderRadius: 999,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
     marginRight: 8,
     marginBottom: 8,
+    backgroundColor: palette.card,
   },
   moodChipActive: { backgroundColor: palette.primary, borderColor: palette.primary },
   moodText: { color: palette.primaryDark, fontWeight: '600' },
@@ -447,23 +515,23 @@ const styles = StyleSheet.create({
   notesInput: {
     borderWidth: 1,
     borderColor: palette.border,
-    borderRadius: 10,
-    padding: 10,
-    minHeight: 70,
+    borderRadius: 12,
+    padding: 12,
+    minHeight: 80,
     color: palette.text,
   },
-  cookedBtn: { backgroundColor: '#0F766E', padding: 12, borderRadius: 10, marginTop: 16, alignItems: 'center' },
-  cookedBtnText: { color: '#fff', fontWeight: '700' },
+  cookedBtn: { backgroundColor: palette.secondary, padding: 14, borderRadius: 14, marginTop: 16, alignItems: 'center' },
+  cookedBtnText: { color: '#fff', fontWeight: '800' },
   disabledBtn: { opacity: 0.7 },
   stepItem: {
     flexDirection: 'row',
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: '#E2E8F0',
-    borderRadius: 12,
-    padding: 10,
+    borderColor: palette.border,
+    borderRadius: 14,
+    padding: 12,
     marginBottom: 8,
-    backgroundColor: '#fff',
+    backgroundColor: palette.card,
   },
   stepItemDone: { borderColor: palette.secondary, backgroundColor: '#ECFDF5' },
   stepIcon: { marginRight: 10 },
@@ -471,15 +539,15 @@ const styles = StyleSheet.create({
   stepTextDone: { textDecorationLine: 'line-through', color: '#059669' },
   progressRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 8 },
   progressText: { fontWeight: '700', color: palette.primaryDark },
-  progressMeta: { color: '#6B7280' },
+  progressMeta: { color: palette.muted },
   logMessage: { marginTop: 8, textAlign: 'center', fontWeight: '600' },
   logMessageSuccess: { color: '#059669' },
   logMessageError: { color: '#DC2626' },
-  versionRow: { borderWidth: 1, borderColor: palette.border, borderRadius: 10, padding: 10, marginBottom: 8, backgroundColor: '#fff' },
+  versionRow: { borderWidth: 1, borderColor: palette.border, borderRadius: 14, padding: 14, marginBottom: 10, backgroundColor: palette.card },
   versionTitle: { color: palette.text, fontWeight: '700' },
-  versionMeta: { color: '#6B7280', marginTop: 3 },
+  versionMeta: { color: palette.muted, marginTop: 3 },
   errorText: { color: '#E74C3C', textAlign: 'center', marginBottom: 12 },
-  retryBtn: { backgroundColor: palette.primary, paddingHorizontal: 20, paddingVertical: 10, borderRadius: 10 },
+  retryBtn: { backgroundColor: palette.primary, paddingHorizontal: 20, paddingVertical: 12, borderRadius: 12, marginTop: 12 },
   retryText: { color: '#fff', fontWeight: '700' },
   loadingText: { marginTop: 10, color: palette.text },
 });

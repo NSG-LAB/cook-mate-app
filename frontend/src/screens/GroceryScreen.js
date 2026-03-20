@@ -140,8 +140,8 @@ export default function GroceryScreen() {
     }
   };
 
-  return (
-    <View style={styles.container}>
+  const renderHeader = () => (
+    <View style={styles.headerBlock}>
       <Text style={styles.title}>Smart Grocery List</Text>
       <Text style={styles.info}>Selected recipes: {selectedRecipeIds.length}</Text>
 
@@ -237,7 +237,11 @@ export default function GroceryScreen() {
           </View>
         )) : <Text style={styles.info}>Generate list to view grouped aisles.</Text>}
       </View>
+    </View>
+  );
 
+  return (
+    <View style={styles.flex}>
       <FlatList
         data={items}
         keyExtractor={(item) => item}
@@ -251,6 +255,7 @@ export default function GroceryScreen() {
             </TouchableOpacity>
           </View>
         )}
+        ListHeaderComponent={renderHeader}
         ListEmptyComponent={<Text style={styles.info}>{loading ? 'Building grocery list...' : 'No grocery items yet.'}</Text>}
         ListFooterComponent={
           groceryHasNext ? (
@@ -263,13 +268,15 @@ export default function GroceryScreen() {
             </TouchableOpacity>
           ) : null
         }
+        showsVerticalScrollIndicator={false}
       />
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: palette.backgroundAlt, padding: 14 },
+  flex: { flex: 1, backgroundColor: palette.backgroundAlt },
+  headerBlock: { padding: 14 },
   title: { fontSize: 24, fontWeight: '800', color: palette.text },
   cardTitle: { fontWeight: '700', color: palette.primaryDark, marginBottom: 8 },
   info: { color: palette.text, marginVertical: 8 },
@@ -299,7 +306,7 @@ const styles = StyleSheet.create({
   aisleBlock: { marginBottom: 10 },
   aisleTitle: { color: '#0F172A', fontWeight: '700' },
   aisleItemsText: { color: '#475569', marginTop: 2 },
-  listSpacing: { paddingBottom: 60 },
+  listSpacing: { paddingHorizontal: 14, paddingBottom: 80 },
   itemRow: {
     backgroundColor: '#fff',
     borderRadius: 12,

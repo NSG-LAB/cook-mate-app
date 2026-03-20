@@ -193,8 +193,8 @@ export default function RecipeSuggestionsScreen({ navigation }) {
     }
   };
 
-  return (
-    <View style={styles.container}>
+  const renderHeader = () => (
+    <View style={styles.headerBlock}>
       <Text style={styles.title}>Recipe Suggestions</Text>
       <Text style={styles.subtitle}>{title}</Text>
       <View style={styles.modeBadge}>
@@ -282,7 +282,11 @@ export default function RecipeSuggestionsScreen({ navigation }) {
       ) : null}
 
       {statusMessage ? <Text style={styles.statusText}>{statusMessage}</Text> : null}
+    </View>
+  );
 
+  return (
+    <View style={styles.screen}>
       <FlatList
         data={recipes}
         keyExtractor={(item) => String(item.id)}
@@ -295,18 +299,21 @@ export default function RecipeSuggestionsScreen({ navigation }) {
             selected={selectedRecipeIds.includes(item.id)}
           />
         )}
+        ListHeaderComponent={renderHeader}
         ListEmptyComponent={
           <Text style={styles.emptyText}>
             {loading ? 'Loading suggestions...' : statusMessage || 'Tap a button above to fetch recipe suggestions.'}
           </Text>
         }
+        showsVerticalScrollIndicator={false}
       />
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: palette.backgroundAlt, padding: 14 },
+  screen: { flex: 1, backgroundColor: palette.backgroundAlt },
+  headerBlock: { padding: 14, paddingBottom: 0 },
   title: { fontSize: 24, fontWeight: '800', color: palette.text },
   subtitle: { marginTop: 6, color: palette.text, marginBottom: 12 },
   modeBadge: {
@@ -365,7 +372,7 @@ const styles = StyleSheet.create({
   remixMeta: { color: '#C2410C', marginTop: 4, marginBottom: 4 },
   remixSummary: { color: '#7C2D12', marginBottom: 6 },
   remixStep: { color: '#7C2D12', marginBottom: 3 },
-  listSpacing: { paddingBottom: 40 },
+  listSpacing: { paddingHorizontal: 14, paddingBottom: 60 },
   emptyText: { color: palette.text, marginTop: 20, textAlign: 'center' },
   statusText: { color: palette.text, marginBottom: 10 },
   disabledBtn: { opacity: 0.7 },
