@@ -2,7 +2,9 @@ package com.cookmate.service;
 
 import com.cookmate.dto.NutritionSummaryResponse;
 import com.cookmate.dto.PagedResponse;
+import com.cookmate.dto.HealthFilterRequest;
 import com.cookmate.dto.RecipeModerationRequest;
+import com.cookmate.dto.RecipeNutritionComparisonResponse;
 import com.cookmate.dto.RecipePrintResponse;
 import com.cookmate.dto.RecipeRemixRequest;
 import com.cookmate.dto.RecipeRemixResponse;
@@ -326,6 +328,42 @@ public class RecipeService {
         return new NutritionSummaryResponse(total, count, avg);
     }
 
+    public List<RecipeSummaryResponse> getByHealthFilters(HealthFilterRequest request) {
+        HealthFilterRequest criteria = request == null ? new HealthFilterRequest() : request;
+
+        Set<String> goals = normalizeLowerSet(criteria.getGoals());
+        Set<String> dietaryTags = normalizeLowerSet(criteria.getDietaryTags());
+        Set<String> excludedAllergens = normalizeLowerSet(criteria.getExcludedAllergens());
+        Integer maxCalories = criteria.getMaxCalories();
+        Integer minProteinGrams = criteria.getMinProteinGrams();
+
+        return getPublishedSnapshot().stream()
+                .filter(recipe -> maxCalories == null || safe(recipe.getCalories()) <= maxCalories)
+                .filter(recipe -> minProteinGrams == null || resolveProteinGrams(recipe) >= minProteinGrams)
+                .filter(recipe -> goals.isEmpty() || isGoalMatch(recipe, goals))
+                .filter(recipe -> dietaryTags.isEmpty() || containsAllDietaryTags(recipe, dietaryTags))
+                .filter(recipe -> excludedAllergens.isEmpty() || !hasExcludedAllergen(recipe, excludedAllergens))
+                .map(recipe -> toSummaryResponse(recipe, null))
+                .toList();
+    }
+
+    public List<RecipeNutritionComparisonResponse> nutritionComparison(List<Long> recipeIds) {
+        if (recipeIds == null || recipeIds.isEmpty()) {
+            return List.of();
+        }
+
+        return recipeRepository.findAllById(recipeIds).stream()
+                .map(recipe -> RecipeNutritionComparisonResponse.builder()
+                        .id(recipe.getId())
+                        .title(recipe.getTitle())
+                        .calories(safe(recipe.getCalories()))
+                        .proteinGrams(resolveProteinGrams(recipe))
+                        .carbsGrams(resolveCarbsGrams(recipe))
+                        .fatGrams(resolveFatGrams(recipe))
+                        .build())
+                .toList();
+    }
+
     public RecipeResponse getById(Long id) {
         Recipe recipe = recipeRepository.findById(Objects.requireNonNull(id))
                 .orElseThrow(() -> new NoSuchElementException("Recipe not found"));
@@ -342,6 +380,9 @@ public class RecipeService {
         recipe.setDifficulty((request.getDifficulty() == null || request.getDifficulty().isBlank()) ? "easy" : request.getDifficulty().trim().toLowerCase());
         recipe.setEstimatedCost(request.getEstimatedCost() == null ? 100 : Math.max(request.getEstimatedCost(), 0));
         recipe.setCalories(request.getCalories() == null ? 300 : Math.max(request.getCalories(), 0));
+        recipe.setProteinGrams(request.getProteinGrams() == null ? 12 : Math.max(request.getProteinGrams(), 0));
+        recipe.setCarbsGrams(request.getCarbsGrams() == null ? 35 : Math.max(request.getCarbsGrams(), 0));
+        recipe.setFatGrams(request.getFatGrams() == null ? 10 : Math.max(request.getFatGrams(), 0));
         recipe.setImageUrl((request.getImageUrl() == null || request.getImageUrl().isBlank())
             ? "https://images.unsplash.com/photo-1546069901-ba9599a7e63c"
             : request.getImageUrl().trim());
@@ -354,6 +395,8 @@ public class RecipeService {
         recipe.setSubstitutionSuggestions(request.getSubstitutionSuggestions() == null
             ? List.of("No butter? Use olive oil.")
             : cleanList(request.getSubstitutionSuggestions()));
+        recipe.setAllergens(resolveAllergens(request.getAllergens(), recipe.getIngredients()));
+        recipe.setDietaryTags(resolveDietaryTags(request.getDietaryTags(), recipe.getIngredients()));
         recipe.setSteps((request.getSteps() == null || request.getSteps().isEmpty())
             ? List.of("Prepare ingredients.", "Cook and serve.")
             : cleanList(request.getSteps()));
@@ -421,6 +464,15 @@ public class RecipeService {
         if (request.getCalories() != null) {
             recipe.setCalories(Math.max(request.getCalories(), 0));
         }
+        if (request.getProteinGrams() != null) {
+            recipe.setProteinGrams(Math.max(request.getProteinGrams(), 0));
+        }
+        if (request.getCarbsGrams() != null) {
+            recipe.setCarbsGrams(Math.max(request.getCarbsGrams(), 0));
+        }
+        if (request.getFatGrams() != null) {
+            recipe.setFatGrams(Math.max(request.getFatGrams(), 0));
+        }
         if (request.getImageUrl() != null && !request.getImageUrl().isBlank()) {
             recipe.setImageUrl(request.getImageUrl().trim());
         }
@@ -432,6 +484,12 @@ public class RecipeService {
         }
         if (request.getSubstitutionSuggestions() != null) {
             recipe.setSubstitutionSuggestions(cleanList(request.getSubstitutionSuggestions()));
+        }
+        if (request.getAllergens() != null) {
+            recipe.setAllergens(resolveAllergens(request.getAllergens(), recipe.getIngredients()));
+        }
+        if (request.getDietaryTags() != null) {
+            recipe.setDietaryTags(resolveDietaryTags(request.getDietaryTags(), recipe.getIngredients()));
         }
         if (request.getSteps() != null && !request.getSteps().isEmpty()) {
             recipe.setSteps(cleanList(request.getSteps()));
@@ -547,10 +605,15 @@ public class RecipeService {
                 .totalTimeMinutes(totalTime)
                 .estimatedCost(recipe.getEstimatedCost())
                 .calories(recipe.getCalories())
+                .proteinGrams(resolveProteinGrams(recipe))
+                .carbsGrams(resolveCarbsGrams(recipe))
+                .fatGrams(resolveFatGrams(recipe))
                 .imageUrl(recipe.getImageUrl())
                 .videoUrl(recipe.getVideoUrl())
                 .ingredients(ingredients)
                 .substitutionSuggestions(substitutions)
+                .allergens(resolveAllergens(recipe.getAllergens(), ingredients))
+                .dietaryTags(resolveDietaryTags(recipe.getDietaryTags(), ingredients))
                 .steps(recipe.getSteps() == null ? List.of() : recipe.getSteps())
                 .videoStepLinks(links)
                 .versionNumber(recipe.getVersionNumber() == null ? 1 : recipe.getVersionNumber())
@@ -580,7 +643,12 @@ public class RecipeService {
                 .difficulty(resolveDifficulty(recipe))
                 .estimatedCost(recipe.getEstimatedCost())
                 .calories(recipe.getCalories())
+                .proteinGrams(resolveProteinGrams(recipe))
+                .carbsGrams(resolveCarbsGrams(recipe))
+                .fatGrams(resolveFatGrams(recipe))
                 .imageUrl(recipe.getImageUrl())
+                .allergens(resolveAllergens(recipe.getAllergens(), ingredients))
+                .dietaryTags(resolveDietaryTags(recipe.getDietaryTags(), ingredients))
                 .ingredientMatchPercent(matchPercent)
                 .build();
     }
@@ -676,6 +744,144 @@ public class RecipeService {
                 .map(String::trim)
                 .filter(s -> !s.isBlank())
                 .toList();
+    }
+
+    private Set<String> normalizeLowerSet(List<String> values) {
+        if (values == null || values.isEmpty()) {
+            return Set.of();
+        }
+        return values.stream()
+                .filter(Objects::nonNull)
+                .map(String::trim)
+                .filter(s -> !s.isBlank())
+                .map(String::toLowerCase)
+                .collect(Collectors.toSet());
+    }
+
+    private List<String> resolveAllergens(List<String> suppliedAllergens, List<String> ingredients) {
+        List<String> cleaned = suppliedAllergens == null ? List.of() : cleanList(suppliedAllergens);
+        if (!cleaned.isEmpty()) {
+            return cleaned.stream().map(String::toLowerCase).toList();
+        }
+        return inferAllergens(ingredients);
+    }
+
+    private List<String> resolveDietaryTags(List<String> suppliedTags, List<String> ingredients) {
+        List<String> cleaned = suppliedTags == null ? List.of() : cleanList(suppliedTags);
+        if (!cleaned.isEmpty()) {
+            return cleaned.stream().map(String::toLowerCase).toList();
+        }
+        return inferDietaryTags(ingredients);
+    }
+
+    private List<String> inferAllergens(List<String> ingredients) {
+        Set<String> lower = normalizeLowerSet(ingredients);
+        List<String> allergens = new ArrayList<>();
+        if (containsAny(lower, Set.of("milk", "butter", "paneer", "cheese", "yogurt", "curd", "cream"))) {
+            allergens.add("dairy");
+        }
+        if (containsAny(lower, Set.of("egg"))) {
+            allergens.add("egg");
+        }
+        if (containsAny(lower, Set.of("peanut", "cashew", "almond", "walnut"))) {
+            allergens.add("nuts");
+        }
+        if (containsAny(lower, Set.of("bread", "pasta", "noodles", "tortilla", "roll"))) {
+            allergens.add("gluten");
+        }
+        if (containsAny(lower, Set.of("soy sauce", "tofu", "soya", "soy"))) {
+            allergens.add("soy");
+        }
+        return allergens;
+    }
+
+    private List<String> inferDietaryTags(List<String> ingredients) {
+        Set<String> lower = normalizeLowerSet(ingredients);
+        boolean hasMeat = containsAny(lower, Set.of("chicken", "fish", "mutton", "beef", "pork"));
+        boolean hasEgg = lower.contains("egg");
+        boolean hasDairy = containsAny(lower, Set.of("milk", "butter", "paneer", "cheese", "yogurt", "curd", "cream"));
+        boolean hasGluten = containsAny(lower, Set.of("bread", "pasta", "noodles", "tortilla", "roll"));
+
+        List<String> tags = new ArrayList<>();
+        if (!hasMeat && !hasEgg && !hasDairy) {
+            tags.add("vegan");
+        }
+        if (!hasMeat && !hasEgg) {
+            tags.add("vegetarian");
+        }
+        if (!hasGluten) {
+            tags.add("gluten-free");
+        }
+        if (!containsAny(lower, Set.of("rice", "pasta", "bread", "noodles", "poha", "sugar"))) {
+            tags.add("keto-friendly");
+        }
+        return tags;
+    }
+
+    private boolean containsAny(Set<String> source, Set<String> candidates) {
+        for (String candidate : candidates) {
+            if (source.contains(candidate)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private boolean isGoalMatch(Recipe recipe, Set<String> goals) {
+        int calories = safe(recipe.getCalories());
+        int protein = resolveProteinGrams(recipe);
+        int carbs = resolveCarbsGrams(recipe);
+
+        for (String goal : goals) {
+            boolean match = switch (goal) {
+                case "high-protein" -> protein >= 25;
+                case "low-carb" -> carbs <= 25;
+                case "weight-loss" -> calories <= 400 && protein >= 18;
+                default -> true;
+            };
+            if (!match) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private boolean containsAllDietaryTags(Recipe recipe, Set<String> requestedTags) {
+        Set<String> tags = normalizeLowerSet(resolveDietaryTags(recipe.getDietaryTags(), recipe.getIngredients()));
+        return tags.containsAll(requestedTags);
+    }
+
+    private boolean hasExcludedAllergen(Recipe recipe, Set<String> excludedAllergens) {
+        Set<String> allergens = normalizeLowerSet(resolveAllergens(recipe.getAllergens(), recipe.getIngredients()));
+        return excludedAllergens.stream().anyMatch(allergens::contains);
+    }
+
+    private int safe(Integer value) {
+        return value == null ? 0 : Math.max(value, 0);
+    }
+
+    private int resolveProteinGrams(Recipe recipe) {
+        if (recipe.getProteinGrams() != null) {
+            return safe(recipe.getProteinGrams());
+        }
+        int calories = safe(recipe.getCalories());
+        return Math.max(10, calories / 20);
+    }
+
+    private int resolveCarbsGrams(Recipe recipe) {
+        if (recipe.getCarbsGrams() != null) {
+            return safe(recipe.getCarbsGrams());
+        }
+        int calories = safe(recipe.getCalories());
+        return Math.max(15, calories / 12);
+    }
+
+    private int resolveFatGrams(Recipe recipe) {
+        if (recipe.getFatGrams() != null) {
+            return safe(recipe.getFatGrams());
+        }
+        int calories = safe(recipe.getCalories());
+        return Math.max(6, calories / 35);
     }
 
     private boolean containsAnyIngredient(Recipe recipe, Set<String> targetIngredients) {

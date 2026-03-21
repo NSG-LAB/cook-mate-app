@@ -7,6 +7,7 @@ export default function RecipeCard({ recipe, onPress, onToggleSelect, selected }
   const match = typeof recipe.ingredientMatchPercent === 'number'
     ? `${recipe.ingredientMatchPercent}% pantry match`
     : `${recipe.region || 'Global'} cuisine`;
+  const allergens = Array.isArray(recipe.allergens) ? recipe.allergens.slice(0, 3) : [];
 
   return (
     <TouchableOpacity style={[styles.card, selected && styles.cardSelected]} onPress={onPress} activeOpacity={0.9}>
@@ -41,6 +42,24 @@ export default function RecipeCard({ recipe, onPress, onToggleSelect, selected }
           <Text style={styles.metaLabel}>{recipe.region || 'Fusion'}</Text>
           <Text style={styles.metaHint}>origin</Text>
         </View>
+      </View>
+
+      {allergens.length ? (
+        <View style={styles.allergenRow}>
+          <Text style={styles.allergenTitle}>Allergens:</Text>
+          {allergens.map((allergen) => (
+            <View key={`${recipe.id}-${allergen}`} style={styles.allergenBadge}>
+              <Ionicons name="warning-outline" size={12} color="#9A3412" />
+              <Text style={styles.allergenText}>{allergen}</Text>
+            </View>
+          ))}
+        </View>
+      ) : null}
+
+      <View style={styles.macroRow}>
+        <Text style={styles.macroText}>P {recipe.proteinGrams ?? 0}g</Text>
+        <Text style={styles.macroText}>C {recipe.carbsGrams ?? 0}g</Text>
+        <Text style={styles.macroText}>F {recipe.fatGrams ?? 0}g</Text>
       </View>
 
       {onToggleSelect ? (
@@ -125,4 +144,21 @@ const styles = StyleSheet.create({
   selectIcon: { marginRight: 8 },
   selectText: { color: '#fff', fontWeight: '800', letterSpacing: 0.4 },
   selectTextSelected: { color: '#0f172a' },
+  allergenRow: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', marginTop: 2, marginBottom: 10 },
+  allergenTitle: { color: '#9A3412', fontWeight: '700', marginRight: 8, fontSize: 12 },
+  allergenBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFEDD5',
+    borderColor: '#FDBA74',
+    borderWidth: 1,
+    borderRadius: 999,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    marginRight: 6,
+    marginBottom: 4,
+  },
+  allergenText: { color: '#9A3412', fontWeight: '700', fontSize: 11, marginLeft: 4, textTransform: 'capitalize' },
+  macroRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 8 },
+  macroText: { fontSize: 12, fontWeight: '700', color: palette.primaryDark },
 });

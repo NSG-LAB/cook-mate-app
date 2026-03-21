@@ -11,9 +11,14 @@ const DEFAULT_FORM = {
   difficulty: 'easy',
   estimatedCost: '100',
   calories: '300',
+  proteinGrams: '12',
+  carbsGrams: '35',
+  fatGrams: '10',
   imageUrl: '',
   videoUrl: '',
   ingredientsText: 'salt, pepper',
+  allergensText: '',
+  dietaryTagsText: '',
   substitutionsText: 'No butter? Use olive oil.',
   stepsText: 'Prepare ingredients.\nCook and serve.',
   timestampsText: '0,90',
@@ -56,9 +61,14 @@ export default function RecipeEditorScreen({ route, navigation }) {
       difficulty: recipe.difficulty || 'easy',
       estimatedCost: String(recipe.estimatedCost ?? 100),
       calories: String(recipe.calories ?? 300),
+      proteinGrams: String(recipe.proteinGrams ?? 12),
+      carbsGrams: String(recipe.carbsGrams ?? 35),
+      fatGrams: String(recipe.fatGrams ?? 10),
       imageUrl: recipe.imageUrl || '',
       videoUrl: recipe.videoUrl || '',
       ingredientsText: (recipe.ingredients || []).join(', '),
+      allergensText: (recipe.allergens || []).join(', '),
+      dietaryTagsText: (recipe.dietaryTags || []).join(', '),
       substitutionsText: (recipe.substitutionSuggestions || []).join(', '),
       stepsText: (recipe.steps || []).join('\n'),
       timestampsText: (recipe.videoStepLinks || []).map((item) => item.seconds).join(','),
@@ -101,9 +111,14 @@ export default function RecipeEditorScreen({ route, navigation }) {
       difficulty: form.difficulty.toLowerCase(),
       estimatedCost: toInt(form.estimatedCost, 100),
       calories: toInt(form.calories, 300),
+      proteinGrams: toInt(form.proteinGrams, 12),
+      carbsGrams: toInt(form.carbsGrams, 35),
+      fatGrams: toInt(form.fatGrams, 10),
       imageUrl: form.imageUrl,
       videoUrl: form.videoUrl,
       ingredients: toListFromComma(form.ingredientsText),
+      allergens: toListFromComma(form.allergensText),
+      dietaryTags: toListFromComma(form.dietaryTagsText),
       substitutionSuggestions: toListFromComma(form.substitutionsText),
       steps: toListFromLines(form.stepsText),
       stepVideoTimestampsSeconds: toListFromComma(form.timestampsText).map((value) => toInt(value, 0)),
@@ -148,9 +163,14 @@ export default function RecipeEditorScreen({ route, navigation }) {
       <TextInput style={styles.input} value={form.cookTimeMinutes} placeholder="Cook time minutes" keyboardType="numeric" onChangeText={(value) => setForm((prev) => ({ ...prev, cookTimeMinutes: value }))} />
       <TextInput style={styles.input} value={form.estimatedCost} placeholder="Estimated cost" keyboardType="numeric" onChangeText={(value) => setForm((prev) => ({ ...prev, estimatedCost: value }))} />
       <TextInput style={styles.input} value={form.calories} placeholder="Calories" keyboardType="numeric" onChangeText={(value) => setForm((prev) => ({ ...prev, calories: value }))} />
+      <TextInput style={styles.input} value={form.proteinGrams} placeholder="Protein (grams)" keyboardType="numeric" onChangeText={(value) => setForm((prev) => ({ ...prev, proteinGrams: value }))} />
+      <TextInput style={styles.input} value={form.carbsGrams} placeholder="Carbs (grams)" keyboardType="numeric" onChangeText={(value) => setForm((prev) => ({ ...prev, carbsGrams: value }))} />
+      <TextInput style={styles.input} value={form.fatGrams} placeholder="Fat (grams)" keyboardType="numeric" onChangeText={(value) => setForm((prev) => ({ ...prev, fatGrams: value }))} />
       <TextInput style={styles.input} value={form.imageUrl} placeholder="Image URL" onChangeText={(value) => setForm((prev) => ({ ...prev, imageUrl: value }))} />
       <TextInput style={styles.input} value={form.videoUrl} placeholder="Video URL" onChangeText={(value) => setForm((prev) => ({ ...prev, videoUrl: value }))} />
       <TextInput style={styles.input} value={form.ingredientsText} placeholder="Ingredients (comma separated)" onChangeText={(value) => setForm((prev) => ({ ...prev, ingredientsText: value }))} />
+      <TextInput style={styles.input} value={form.allergensText} placeholder="Allergens (comma separated)" onChangeText={(value) => setForm((prev) => ({ ...prev, allergensText: value }))} />
+      <TextInput style={styles.input} value={form.dietaryTagsText} placeholder="Diet tags (vegan, gluten-free, keto-friendly)" onChangeText={(value) => setForm((prev) => ({ ...prev, dietaryTagsText: value }))} />
       <TextInput style={styles.input} value={form.substitutionsText} placeholder="Substitution suggestions (comma separated)" onChangeText={(value) => setForm((prev) => ({ ...prev, substitutionsText: value }))} />
       <TextInput style={[styles.input, styles.multiline]} multiline value={form.stepsText} placeholder="Steps (one per line)" onChangeText={(value) => setForm((prev) => ({ ...prev, stepsText: value }))} />
       <TextInput style={styles.input} value={form.timestampsText} placeholder="Step timestamps in seconds (comma separated)" onChangeText={(value) => setForm((prev) => ({ ...prev, timestampsText: value }))} />

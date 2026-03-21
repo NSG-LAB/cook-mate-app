@@ -4,6 +4,10 @@ import Constants from 'expo-constants';
 
 const normalizeUrl = (value) => (value ? value.replace(/\/$/, '') : value);
 
+const isExpoGo =
+  Constants.executionEnvironment === 'storeClient' ||
+  Constants.appOwnership === 'expo';
+
 const getExpoDevHostname = () => {
   const manifest = Constants.expoConfig || Constants.manifest;
   const hostUri =
@@ -26,7 +30,9 @@ const getDefaultBaseUrl = () => {
   }
 
   return Platform.OS === 'android'
-    ? 'http://10.0.2.2:8080/api'
+    ? isExpoGo
+      ? 'http://10.0.2.2:8080/api'
+      : 'http://localhost:8080/api'
     : 'http://localhost:8080/api';
 };
 

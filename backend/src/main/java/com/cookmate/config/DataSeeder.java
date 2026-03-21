@@ -1,7 +1,9 @@
 package com.cookmate.config;
 
 import com.cookmate.entity.Recipe;
+import com.cookmate.entity.RecipeChallenge;
 import com.cookmate.entity.User;
+import com.cookmate.repository.RecipeChallengeRepository;
 import com.cookmate.repository.RecipeRepository;
 import com.cookmate.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
@@ -9,6 +11,8 @@ import org.springframework.boot.CommandLineRunner;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
 
+import java.time.DayOfWeek;
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Objects;
 
@@ -17,6 +21,7 @@ import java.util.Objects;
 public class DataSeeder implements CommandLineRunner {
 
     private final RecipeRepository recipeRepository;
+        private final RecipeChallengeRepository recipeChallengeRepository;
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
 
@@ -24,6 +29,7 @@ public class DataSeeder implements CommandLineRunner {
     public void run(String... args) {
         seedDefaultUser();
         seedRecipes();
+                seedWeeklyChallenge();
     }
 
         private void seedRecipes() {
@@ -217,6 +223,32 @@ public class DataSeeder implements CommandLineRunner {
 
         recipeRepository.saveAll(Objects.requireNonNull(seedRecipes));
     }
+
+        private void seedWeeklyChallenge() {
+                if (recipeChallengeRepository.findFirstByActiveTrueOrderByWeekStartDateDesc().isPresent()) {
+                        return;
+                }
+
+                Recipe featured = recipeRepository.findAll().stream().findFirst().orElse(null);
+                if (featured == null) {
+                        return;
+                }
+
+                LocalDate today = LocalDate.now();
+                LocalDate weekStart = today.with(DayOfWeek.MONDAY);
+                LocalDate weekEnd = weekStart.plusDays(6);
+
+                RecipeChallenge challenge = RecipeChallenge.builder()
+                                .title("Cook This Week's Featured Dish")
+                                .description("Cook the featured recipe, leave a tip, and earn your first social badge.")
+                                .weekStartDate(weekStart)
+                                .weekEndDate(weekEnd)
+                                .featuredRecipe(featured)
+                                .active(true)
+                                .build();
+
+                recipeChallengeRepository.save(challenge);
+        }
 
         private void seedDefaultUser() {
         final String demoEmail = "student@example.com";

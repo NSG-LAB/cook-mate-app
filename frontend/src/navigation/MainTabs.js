@@ -7,6 +7,7 @@ import HomeScreen from '../screens/HomeScreen';
 import IngredientsScreen from '../screens/IngredientsScreen';
 import GroceryScreen from '../screens/GroceryScreen';
 import ProfileScreen from '../screens/ProfileScreen';
+import CommunityScreen from '../screens/CommunityScreen';
 import RecipeSuggestionsScreen from '../screens/RecipeSuggestionsScreen';
 import RecipeEditorScreen from '../screens/RecipeEditorScreen';
 import CookingHistoryScreen from '../screens/CookingHistoryScreen';
@@ -35,6 +36,13 @@ const PRIMARY_TABS = [
     label: 'Grocery',
     icon: 'cart-outline',
     activeIcon: 'cart',
+  },
+  {
+    name: 'Community',
+    component: CommunityScreen,
+    label: 'Community',
+    icon: 'people-outline',
+    activeIcon: 'people',
   },
   {
     name: 'Profile',

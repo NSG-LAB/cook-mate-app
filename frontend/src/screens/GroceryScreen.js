@@ -17,7 +17,22 @@ const BARCODE_MAP = {
 const GROCERY_PAGE_SIZE = 25;
 
 export default function GroceryScreen() {
-  const { selectedRecipeIds, budget, spentBudget, setSpentBudget, purchaseHistory, recordPurchasedItem, addPantryItem } = useApp();
+  const {
+    selectedRecipeIds,
+    budget,
+    spentBudget,
+    setSpentBudget,
+    purchaseHistory,
+    recordPurchasedItem,
+    addPantryItem,
+    calorieTarget,
+    setCalorieTarget,
+    waterTodayMl,
+    waterTargetMl,
+    setWaterTargetMl,
+    logWater,
+    resetWater,
+  } = useApp();
   const [items, setItems] = useState([]);
   const [groceryPage, setGroceryPage] = useState(0);
   const [groceryHasNext, setGroceryHasNext] = useState(false);
@@ -26,7 +41,10 @@ export default function GroceryScreen() {
   const [barcode, setBarcode] = useState('');
   const [plannedSpend, setPlannedSpend] = useState(0);
   const [purchaseAmount, setPurchaseAmount] = useState('0');
+  const [calorieTargetInput, setCalorieTargetInput] = useState(String(calorieTarget));
+  const [waterTargetInput, setWaterTargetInput] = useState(String(waterTargetMl));
   const [summary, setSummary] = useState({ totalCalories: 0, recipeCount: 0, avgCalories: 0 });
+  const [comparison, setComparison] = useState([]);
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState('');
 
@@ -36,6 +54,8 @@ export default function GroceryScreen() {
     .map(([name]) => name);
 
   const remainingBudget = Number((budget - spentBudget).toFixed(2));
+  const calorieProgress = calorieTarget > 0 ? Math.min(summary.totalCalories / calorieTarget, 1) : 0;
+  const waterProgress = waterTargetMl > 0 ? Math.min(waterTodayMl / waterTargetMl, 1) : 0;
 
   const scanBarcode = () => {
     const trimmed = barcode.trim();
@@ -93,11 +113,12 @@ export default function GroceryScreen() {
     setGroceryPage(0);
     setGroceryHasNext(false);
     try {
-      const [groceryRes, groupedRes, nutritionRes, planRes] = await Promise.all([
+      const [groceryRes, groupedRes, nutritionRes, planRes, comparisonRes] = await Promise.all([
         api.post('/recipes/grocery-list', { recipeIds: selectedRecipeIds }, { params: { page: 0, size: GROCERY_PAGE_SIZE } }),
         api.post('/recipes/grocery-list-grouped', { recipeIds: selectedRecipeIds }),
         api.post('/recipes/nutrition-summary', { recipeIds: selectedRecipeIds }),
         api.post('/recipes/planned-spend', { recipeIds: selectedRecipeIds }),
+        api.post('/recipes/nutrition-comparison', { recipeIds: selectedRecipeIds }),
       ]);
 
       const groceryData = groceryRes.data || {};
@@ -108,10 +129,12 @@ export default function GroceryScreen() {
       setGroupedItems(groupedRes.data || {});
       setSummary(nutritionRes.data);
       setPlannedSpend(planRes.data?.totalEstimatedCost || 0);
+      setComparison(Array.isArray(comparisonRes.data) ? comparisonRes.data : []);
     } catch (error) {
       setMessage(error?.response?.data?.message || 'Unable to generate groceries right now.');
       setItems([]);
       setGroceryHasNext(false);
+      setComparison([]);
     } finally {
       setLoading(false);
     }
@@ -226,6 +249,102 @@ export default function GroceryScreen() {
           <Ionicons name="speedometer-outline" size={18} color={palette.secondary} />
           <Text style={styles.summaryText}>Avg Calories: {Math.round(summary.avgCalories || 0)}</Text>
         </View>
+        <View style={styles.goalInputRow}>
+          <TextInput
+            value={calorieTargetInput}
+            onChangeText={setCalorieTargetInput}
+            keyboardType="number-pad"
+            style={styles.input}
+            placeholder="Daily calorie target"
+          />
+          <TouchableOpacity
+            style={styles.scanBtn}
+            onPress={() => {
+              const value = Number(calorieTargetInput);
+              if (!Number.isFinite(value) || value <= 0) {
+                setMessage('Enter a valid calorie target.');
+                return;
+              }
+              setCalorieTarget(Math.round(value));
+              setMessage('Calorie target updated.');
+            }}
+          >
+            <Text style={styles.scanBtnText}>Set</Text>
+          </TouchableOpacity>
+        </View>
+        <View style={styles.progressTrack}>
+          <View style={[styles.progressFill, { width: `${Math.round(calorieProgress * 100)}%` }]} />
+        </View>
+        <Text style={styles.progressCaption}>
+          {summary.totalCalories} / {calorieTarget} kcal ({Math.round(calorieProgress * 100)}%)
+        </Text>
+      </View>
+
+      <View style={styles.summaryCard}>
+        <Text style={styles.summaryTitle}>Water Intake Tracker</Text>
+        <View style={styles.summaryRow}>
+          <Ionicons name="water-outline" size={18} color={palette.secondary} />
+          <Text style={styles.summaryText}>Today: {waterTodayMl} ml</Text>
+        </View>
+        <View style={styles.summaryRow}>
+          <Ionicons name="flag-outline" size={18} color={palette.secondary} />
+          <Text style={styles.summaryText}>Target: {waterTargetMl} ml</Text>
+        </View>
+        <View style={styles.actionsRowMini}>
+          <TouchableOpacity style={styles.quickAddBtn} onPress={() => logWater(250)}>
+            <Text style={styles.quickAddText}>+250ml</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.quickAddBtn} onPress={() => logWater(500)}>
+            <Text style={styles.quickAddText}>+500ml</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={[styles.quickAddBtn, styles.quickAddReset]} onPress={resetWater}>
+            <Text style={styles.quickAddText}>Reset</Text>
+          </TouchableOpacity>
+        </View>
+        <View style={styles.goalInputRow}>
+          <TextInput
+            value={waterTargetInput}
+            onChangeText={setWaterTargetInput}
+            keyboardType="number-pad"
+            style={styles.input}
+            placeholder="Daily water target (ml)"
+          />
+          <TouchableOpacity
+            style={styles.scanBtn}
+            onPress={() => {
+              const value = Number(waterTargetInput);
+              if (!Number.isFinite(value) || value <= 0) {
+                setMessage('Enter a valid water target.');
+                return;
+              }
+              setWaterTargetMl(Math.round(value));
+              setMessage('Water target updated.');
+            }}
+          >
+            <Text style={styles.scanBtnText}>Set</Text>
+          </TouchableOpacity>
+        </View>
+        <View style={styles.progressTrack}>
+          <View style={[styles.progressFillWater, { width: `${Math.round(waterProgress * 100)}%` }]} />
+        </View>
+        <Text style={styles.progressCaption}>{Math.round(waterProgress * 100)}% hydration goal reached</Text>
+      </View>
+
+      <View style={styles.summaryCard}>
+        <Text style={styles.summaryTitle}>Nutrition Comparison</Text>
+        {comparison.length ? comparison.map((entry) => {
+          const calorieBar = Math.min(((entry.calories || 0) / 800) * 100, 100);
+          return (
+            <View key={entry.id} style={styles.compareCard}>
+              <Text style={styles.compareTitle}>{entry.title}</Text>
+              <Text style={styles.compareMeta}>P {entry.proteinGrams || 0}g • C {entry.carbsGrams || 0}g • F {entry.fatGrams || 0}g</Text>
+              <View style={styles.compareTrack}>
+                <View style={[styles.compareFill, { width: `${calorieBar}%` }]} />
+              </View>
+              <Text style={styles.compareCalories}>{entry.calories || 0} kcal</Text>
+            </View>
+          );
+        }) : <Text style={styles.info}>Generate list to compare recipe nutrition.</Text>}
       </View>
 
       <View style={styles.summaryCard}>
@@ -324,4 +443,32 @@ const styles = StyleSheet.create({
   loadMoreText: { color: '#fff', fontWeight: '700' },
   disabledBtn: { opacity: 0.7 },
   message: { color: '#E67E22', marginBottom: 12, textAlign: 'center' },
+  goalInputRow: { flexDirection: 'row', alignItems: 'center', marginTop: 8 },
+  progressTrack: {
+    height: 10,
+    borderRadius: 999,
+    backgroundColor: '#E2E8F0',
+    overflow: 'hidden',
+    marginTop: 10,
+  },
+  progressFill: { height: '100%', backgroundColor: '#F97316' },
+  progressFillWater: { height: '100%', backgroundColor: '#0284C7' },
+  progressCaption: { color: '#334155', marginTop: 6, fontWeight: '600' },
+  actionsRowMini: { flexDirection: 'row', marginTop: 10 },
+  quickAddBtn: { backgroundColor: '#0EA5E9', paddingHorizontal: 10, paddingVertical: 8, borderRadius: 8, marginRight: 8 },
+  quickAddReset: { backgroundColor: '#64748B' },
+  quickAddText: { color: '#fff', fontWeight: '700', fontSize: 12 },
+  compareCard: {
+    borderWidth: 1,
+    borderColor: palette.border,
+    borderRadius: 12,
+    padding: 10,
+    marginBottom: 10,
+    backgroundColor: '#F8FAFC',
+  },
+  compareTitle: { color: palette.text, fontWeight: '700' },
+  compareMeta: { color: '#475569', marginTop: 3, marginBottom: 6, fontSize: 12 },
+  compareTrack: { height: 8, borderRadius: 999, backgroundColor: '#E2E8F0', overflow: 'hidden' },
+  compareFill: { height: '100%', backgroundColor: '#7C3AED' },
+  compareCalories: { color: '#334155', marginTop: 4, fontWeight: '700', fontSize: 12 },
 });

@@ -19,10 +19,15 @@ public class RecipeResponse {
     private Integer totalTimeMinutes;
     private Integer estimatedCost;
     private Integer calories;
+    private Integer proteinGrams;
+    private Integer carbsGrams;
+    private Integer fatGrams;
     private String imageUrl;
     private String videoUrl;
     private List<String> ingredients;
     private List<String> substitutionSuggestions;
+    private List<String> allergens;
+    private List<String> dietaryTags;
     private List<String> steps;
     private List<VideoStepLinkResponse> videoStepLinks;
     private Integer versionNumber;

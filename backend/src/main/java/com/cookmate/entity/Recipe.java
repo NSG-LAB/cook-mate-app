@@ -45,6 +45,12 @@ public class Recipe {
     @Column(nullable = false)
     private Integer calories;
 
+    private Integer proteinGrams;
+
+    private Integer carbsGrams;
+
+    private Integer fatGrams;
+
     @Column(nullable = false)
     private String imageUrl;
 
@@ -64,6 +70,16 @@ public class Recipe {
     @CollectionTable(name = "recipe_substitutions", joinColumns = @JoinColumn(name = "recipe_id"))
     @Column(name = "substitution_text", length = 500)
     private List<String> substitutionSuggestions;
+
+    @ElementCollection(fetch = FetchType.EAGER)
+    @CollectionTable(name = "recipe_allergens", joinColumns = @JoinColumn(name = "recipe_id"))
+    @Column(name = "allergen")
+    private List<String> allergens;
+
+    @ElementCollection(fetch = FetchType.EAGER)
+    @CollectionTable(name = "recipe_dietary_tags", joinColumns = @JoinColumn(name = "recipe_id"))
+    @Column(name = "dietary_tag")
+    private List<String> dietaryTags;
 
     @ElementCollection(fetch = FetchType.EAGER)
     @CollectionTable(name = "recipe_steps", joinColumns = @JoinColumn(name = "recipe_id"))

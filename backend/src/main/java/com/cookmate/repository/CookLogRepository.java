@@ -12,6 +12,7 @@ import java.util.List;
 public interface CookLogRepository extends JpaRepository<CookLogEntry, Long> {
     List<CookLogEntry> findByUserOrderByCookedAtDesc(User user);
     List<CookLogEntry> findTop10ByUserOrderByCookedAtDesc(User user);
+    long countByUser(User user);
     long countByUserAndCookedAtBetween(User user, LocalDateTime start, LocalDateTime end);
     Page<CookLogEntry> findByUserOrderByCookedAtDesc(User user, Pageable pageable);
 }

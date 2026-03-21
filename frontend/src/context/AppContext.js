@@ -14,6 +14,10 @@ const SPENT_BUDGET_KEY = 'appSpentBudget';
 const PURCHASE_HISTORY_KEY = 'appPurchaseHistory';
 const DARK_MODE_KEY = 'appDarkMode';
 const STREAK_KEY = 'appStreak';
+const WATER_TODAY_KEY = 'appWaterTodayMl';
+const WATER_TARGET_KEY = 'appWaterTargetMl';
+const CALORIE_TARGET_KEY = 'appCalorieTarget';
+const HEALTH_CONNECTIONS_KEY = 'appHealthConnections';
 
 export const AppProvider = ({ children }) => {
   const [token, setToken] = useState(null);
@@ -27,12 +31,20 @@ export const AppProvider = ({ children }) => {
   const [purchaseHistory, setPurchaseHistory] = useState({});
   const [darkMode, setDarkMode] = useState(false);
   const [streak, setStreak] = useState(0);
+  const [waterTodayMl, setWaterTodayMl] = useState(0);
+  const [waterTargetMl, setWaterTargetMl] = useState(2500);
+  const [calorieTarget, setCalorieTarget] = useState(2200);
+  const [healthConnections, setHealthConnections] = useState({
+    appleHealth: false,
+    googleFit: false,
+    lastSyncAt: null,
+  });
   const [axiosInterceptorId, setAxiosInterceptorId] = useState(null);
 
   useEffect(() => {
     const restoreSession = async () => {
       try {
-        const [storedToken, storedUser, storedIngredients, storedBudget, storedSelected, storedCooked, storedSpentBudget, storedPurchaseHistory, storedDarkMode, storedStreak] = await Promise.all([
+        const [storedToken, storedUser, storedIngredients, storedBudget, storedSelected, storedCooked, storedSpentBudget, storedPurchaseHistory, storedDarkMode, storedStreak, storedWaterToday, storedWaterTarget, storedCalorieTarget, storedHealthConnections] = await Promise.all([
           AsyncStorage.getItem(AUTH_TOKEN_KEY),
           AsyncStorage.getItem(AUTH_USER_KEY),
           AsyncStorage.getItem(INGREDIENTS_KEY),
@@ -43,6 +55,10 @@ export const AppProvider = ({ children }) => {
           AsyncStorage.getItem(PURCHASE_HISTORY_KEY),
           AsyncStorage.getItem(DARK_MODE_KEY),
           AsyncStorage.getItem(STREAK_KEY),
+          AsyncStorage.getItem(WATER_TODAY_KEY),
+          AsyncStorage.getItem(WATER_TARGET_KEY),
+          AsyncStorage.getItem(CALORIE_TARGET_KEY),
+          AsyncStorage.getItem(HEALTH_CONNECTIONS_KEY),
         ]);
 
         if (storedToken) {
@@ -123,6 +139,38 @@ export const AppProvider = ({ children }) => {
             setStreak(parsedStreak);
           }
         }
+
+        if (storedWaterToday) {
+          const parsedWaterToday = Number(storedWaterToday);
+          if (!Number.isNaN(parsedWaterToday)) {
+            setWaterTodayMl(parsedWaterToday);
+          }
+        }
+
+        if (storedWaterTarget) {
+          const parsedWaterTarget = Number(storedWaterTarget);
+          if (!Number.isNaN(parsedWaterTarget)) {
+            setWaterTargetMl(parsedWaterTarget);
+          }
+        }
+
+        if (storedCalorieTarget) {
+          const parsedCalorieTarget = Number(storedCalorieTarget);
+          if (!Number.isNaN(parsedCalorieTarget)) {
+            setCalorieTarget(parsedCalorieTarget);
+          }
+        }
+
+        if (storedHealthConnections) {
+          try {
+            const parsedConnections = JSON.parse(storedHealthConnections);
+            if (parsedConnections && typeof parsedConnections === 'object') {
+              setHealthConnections((prev) => ({ ...prev, ...parsedConnections }));
+            }
+          } catch (_) {
+            // ignore parse errors
+          }
+        }
       } finally {
         setIsBootstrapping(false);
       }
@@ -186,6 +234,34 @@ export const AppProvider = ({ children }) => {
     }
     AsyncStorage.setItem(STREAK_KEY, String(streak)).catch(() => {});
   }, [streak, isBootstrapping]);
+
+  useEffect(() => {
+    if (isBootstrapping) {
+      return;
+    }
+    AsyncStorage.setItem(WATER_TODAY_KEY, String(waterTodayMl)).catch(() => {});
+  }, [waterTodayMl, isBootstrapping]);
+
+  useEffect(() => {
+    if (isBootstrapping) {
+      return;
+    }
+    AsyncStorage.setItem(WATER_TARGET_KEY, String(waterTargetMl)).catch(() => {});
+  }, [waterTargetMl, isBootstrapping]);
+
+  useEffect(() => {
+    if (isBootstrapping) {
+      return;
+    }
+    AsyncStorage.setItem(CALORIE_TARGET_KEY, String(calorieTarget)).catch(() => {});
+  }, [calorieTarget, isBootstrapping]);
+
+  useEffect(() => {
+    if (isBootstrapping) {
+      return;
+    }
+    AsyncStorage.setItem(HEALTH_CONNECTIONS_KEY, JSON.stringify(healthConnections)).catch(() => {});
+  }, [healthConnections, isBootstrapping]);
 
   const teardownInterceptor = () => {
     if (axiosInterceptorId !== null) {
@@ -312,6 +388,36 @@ export const AppProvider = ({ children }) => {
     }
   };
 
+  const logWater = (amountMl) => {
+    const safeAmount = Number(amountMl);
+    if (!Number.isFinite(safeAmount) || safeAmount <= 0) {
+      return;
+    }
+    setWaterTodayMl((prev) => prev + Math.round(safeAmount));
+  };
+
+  const resetWater = () => {
+    setWaterTodayMl(0);
+  };
+
+  const connectHealthProvider = (provider) => {
+    if (!provider) {
+      return;
+    }
+    setHealthConnections((prev) => ({ ...prev, [provider]: true }));
+  };
+
+  const disconnectHealthProvider = (provider) => {
+    if (!provider) {
+      return;
+    }
+    setHealthConnections((prev) => ({ ...prev, [provider]: false }));
+  };
+
+  const markHealthSync = () => {
+    setHealthConnections((prev) => ({ ...prev, lastSyncAt: new Date().toISOString() }));
+  };
+
   const value = useMemo(
     () => ({
       token,
@@ -338,8 +444,20 @@ export const AppProvider = ({ children }) => {
       setDarkMode,
       streak,
       setStreak,
+      waterTodayMl,
+      setWaterTodayMl,
+      waterTargetMl,
+      setWaterTargetMl,
+      calorieTarget,
+      setCalorieTarget,
+      logWater,
+      resetWater,
+      healthConnections,
+      connectHealthProvider,
+      disconnectHealthProvider,
+      markHealthSync,
     }),
-    [token, user, isBootstrapping, budget, ingredients, selectedRecipeIds, cookedRecipeIds, spentBudget, purchaseHistory, darkMode, streak]
+    [token, user, isBootstrapping, budget, ingredients, selectedRecipeIds, cookedRecipeIds, spentBudget, purchaseHistory, darkMode, streak, waterTodayMl, waterTargetMl, calorieTarget, healthConnections]
   );
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;

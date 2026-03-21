@@ -110,4 +110,14 @@ public class RecipeController {
     public ResponseEntity<NutritionSummaryResponse> nutrition(@RequestBody GroceryRequest request) {
         return ResponseEntity.ok(recipeService.nutritionSummary(request.getRecipeIds()));
     }
+
+    @PostMapping("/nutrition-comparison")
+    public ResponseEntity<List<RecipeNutritionComparisonResponse>> nutritionComparison(@RequestBody GroceryRequest request) {
+        return ResponseEntity.ok(recipeService.nutritionComparison(request.getRecipeIds()));
+    }
+
+    @PostMapping("/health-filter")
+    public ResponseEntity<List<RecipeSummaryResponse>> healthFilter(@RequestBody HealthFilterRequest request) {
+        return ResponseEntity.ok(recipeService.getByHealthFilters(request));
+    }
 }

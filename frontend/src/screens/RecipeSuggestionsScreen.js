@@ -14,6 +14,9 @@ export default function RecipeSuggestionsScreen({ navigation }) {
   const [season, setSeason] = useState('summer');
   const [weather, setWeather] = useState('mild');
   const [occasion, setOccasion] = useState('everyday');
+  const [selectedGoals, setSelectedGoals] = useState([]);
+  const [selectedDietary, setSelectedDietary] = useState([]);
+  const [excludedAllergens, setExcludedAllergens] = useState([]);
   const [remix, setRemix] = useState(null);
   const [statusMessage, setStatusMessage] = useState('');
 
@@ -33,6 +36,8 @@ export default function RecipeSuggestionsScreen({ navigation }) {
         return `Occasion suggestions for ${occasion}`;
       case 'remix':
         return 'AI-powered recipe remix from your ingredients';
+      case 'health':
+        return 'Goal and dietary filtered suggestions';
       default:
         return 'Recipe suggestions';
     }
@@ -54,10 +59,16 @@ export default function RecipeSuggestionsScreen({ navigation }) {
         return 'Occasion Mode';
       case 'remix':
         return 'AI Remix Mode';
+      case 'health':
+        return 'Health Goal Mode';
       default:
         return 'Suggestions';
     }
   }, [mode]);
+
+  const toggleFromList = (value, setter) => {
+    setter((prev) => (prev.includes(value) ? prev.filter((item) => item !== value) : [...prev, value]));
+  };
 
   const toggleSelected = (id) => {
     setSelectedRecipeIds((prev) => (prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]));
@@ -193,6 +204,31 @@ export default function RecipeSuggestionsScreen({ navigation }) {
     }
   };
 
+  const loadHealthSuggestions = async () => {
+    if (!selectedGoals.length && !selectedDietary.length && !excludedAllergens.length) {
+      setStatusMessage('Choose at least one goal, diet tag, or excluded allergen first.');
+      return;
+    }
+
+    setLoading(true);
+    setMode('health');
+    setRemix(null);
+    setStatusMessage('');
+    try {
+      const { data } = await api.post('/recipes/health-filter', {
+        goals: selectedGoals,
+        dietaryTags: selectedDietary,
+        excludedAllergens,
+      });
+      setRecipes(data);
+      setStatusMessage(data.length ? '' : 'No recipes matched this health profile.');
+    } catch (error) {
+      setStatusMessage(error?.response?.data?.message || 'Unable to apply health filters.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const renderHeader = () => (
     <View style={styles.headerBlock}>
       <Text style={styles.title}>Recipe Suggestions</Text>
@@ -226,6 +262,45 @@ export default function RecipeSuggestionsScreen({ navigation }) {
         {['everyday', 'date-night', 'kids-meal', 'meal-prep-sunday'].map((value) => (
           <TouchableOpacity key={value} style={[styles.filterChip, occasion === value && styles.filterChipActive]} onPress={() => setOccasion(value)}>
             <Text style={[styles.filterChipText, occasion === value && styles.filterChipTextActive]}>{value}</Text>
+          </TouchableOpacity>
+        ))}
+      </View>
+
+      <Text style={styles.filterTitle}>Goal-based filters</Text>
+      <View style={styles.filterRow}>
+        {['high-protein', 'low-carb', 'weight-loss'].map((value) => (
+          <TouchableOpacity
+            key={value}
+            style={[styles.filterChip, selectedGoals.includes(value) && styles.filterChipActive]}
+            onPress={() => toggleFromList(value, setSelectedGoals)}
+          >
+            <Text style={[styles.filterChipText, selectedGoals.includes(value) && styles.filterChipTextActive]}>{value}</Text>
+          </TouchableOpacity>
+        ))}
+      </View>
+
+      <Text style={styles.filterTitle}>Dietary restrictions</Text>
+      <View style={styles.filterRow}>
+        {['vegan', 'vegetarian', 'gluten-free', 'keto-friendly'].map((value) => (
+          <TouchableOpacity
+            key={value}
+            style={[styles.filterChip, selectedDietary.includes(value) && styles.filterChipActive]}
+            onPress={() => toggleFromList(value, setSelectedDietary)}
+          >
+            <Text style={[styles.filterChipText, selectedDietary.includes(value) && styles.filterChipTextActive]}>{value}</Text>
+          </TouchableOpacity>
+        ))}
+      </View>
+
+      <Text style={styles.filterTitle}>Exclude allergens</Text>
+      <View style={styles.filterRow}>
+        {['dairy', 'egg', 'nuts', 'gluten', 'soy'].map((value) => (
+          <TouchableOpacity
+            key={value}
+            style={[styles.filterChip, excludedAllergens.includes(value) && styles.filterChipActive]}
+            onPress={() => toggleFromList(value, setExcludedAllergens)}
+          >
+            <Text style={[styles.filterChipText, excludedAllergens.includes(value) && styles.filterChipTextActive]}>{value}</Text>
           </TouchableOpacity>
         ))}
       </View>
@@ -267,6 +342,13 @@ export default function RecipeSuggestionsScreen({ navigation }) {
         <TouchableOpacity style={[styles.actionBtn, styles.remixBtn, loading && styles.disabledBtn]} onPress={loadRemixSuggestion} disabled={loading}>
           <Ionicons name="sparkles-outline" size={18} color="#fff" />
           <Text style={styles.btnText}>AI Remix</Text>
+        </TouchableOpacity>
+      </View>
+
+      <View style={styles.actionsRow}>
+        <TouchableOpacity style={[styles.actionBtn, styles.healthBtn, loading && styles.disabledBtn]} onPress={loadHealthSuggestions} disabled={loading}>
+          <Ionicons name="fitness-outline" size={18} color="#fff" />
+          <Text style={styles.btnText}>Health Filter</Text>
         </TouchableOpacity>
       </View>
 
@@ -329,6 +411,7 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   modeText: { marginLeft: 6, fontWeight: '700', color: '#555' },
+  filterTitle: { color: '#334155', fontWeight: '700', marginBottom: 6, marginTop: 2 },
   filterRow: { flexDirection: 'row', flexWrap: 'wrap', marginBottom: 8 },
   filterChip: {
     borderWidth: 1,
@@ -359,6 +442,7 @@ const styles = StyleSheet.create({
   weatherBtn: { backgroundColor: '#0284C7', marginRight: 10 },
   occasionBtn: { backgroundColor: '#7C3AED' },
   remixBtn: { backgroundColor: '#EA580C' },
+  healthBtn: { backgroundColor: '#0F766E' },
   btnText: { color: '#fff', fontWeight: '700', marginLeft: 6 },
   remixCard: {
     borderWidth: 1,

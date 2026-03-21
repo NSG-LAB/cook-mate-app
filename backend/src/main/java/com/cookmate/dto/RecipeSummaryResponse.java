@@ -3,6 +3,8 @@ package com.cookmate.dto;
 import lombok.Builder;
 import lombok.Value;
 
+import java.util.List;
+
 @Value
 @Builder
 public class RecipeSummaryResponse {
@@ -15,6 +17,11 @@ public class RecipeSummaryResponse {
     String difficulty;
     Integer estimatedCost;
     Integer calories;
+    Integer proteinGrams;
+    Integer carbsGrams;
+    Integer fatGrams;
     String imageUrl;
+    List<String> allergens;
+    List<String> dietaryTags;
     Integer ingredientMatchPercent;
 }
