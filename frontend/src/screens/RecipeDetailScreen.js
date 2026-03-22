@@ -11,7 +11,7 @@ const COMMENT_PAGE_SIZE = 10;
 
 export default function RecipeDetailScreen({ route, navigation }) {
   const { id } = route.params;
-  const { addCookedRecipe } = useApp();
+  const { addCookedRecipe, recordRecipeView } = useApp();
   const [recipe, setRecipe] = useState(null);
   const [versions, setVersions] = useState([]);
   const [showEditor, setShowEditor] = useState(false);
@@ -61,6 +61,7 @@ export default function RecipeDetailScreen({ route, navigation }) {
     try {
       const res = await api.get(`/recipes/${id}`);
       setRecipe(res.data);
+      recordRecipeView(res.data);
       setEditForm({
         title: res.data.title || '',
         prepTimeMinutes: String(res.data.prepTimeMinutes ?? ''),

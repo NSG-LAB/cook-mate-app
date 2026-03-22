@@ -18,6 +18,21 @@ export default function ProfileScreen() {
     connectHealthProvider,
     disconnectHealthProvider,
     markHealthSync,
+    t,
+    language,
+    setLanguagePreference,
+    supportedLanguages,
+    rewardPoints,
+    rewardTier,
+    addRewardPoints,
+    notificationsEnabled,
+    requestPushPermission,
+    disablePushNotifications,
+    sendSuggestionNotification,
+    accessibilityPrefs,
+    setAccessibilityOption,
+    integrationSettings,
+    setIntegrationOption,
   } = useApp();
 
   const [weightKg, setWeightKg] = useState('70');
@@ -59,15 +74,56 @@ export default function ProfileScreen() {
     };
   }, [weightKg, heightCm]);
 
+  const handleNotificationToggle = async (value) => {
+    if (value) {
+      const result = await requestPushPermission();
+      if (!result.granted) {
+        Alert.alert('Notification permission', 'Push notifications need permission on a physical device.');
+      }
+      return;
+    }
+    disablePushNotifications();
+  };
+
+  const handleSuggestionNotification = async () => {
+    const sent = await sendSuggestionNotification('Recipe suggestions ready', 'Open For You picks and claim reward points.');
+    if (!sent) {
+      Alert.alert('Notifications disabled', 'Enable push notifications first.');
+      return;
+    }
+    addRewardPoints(3);
+    Alert.alert('Sent', 'A suggestion notification has been scheduled.');
+  };
+
   return (
     <ScrollView
       style={[styles.container, darkMode && styles.darkContainer]}
       contentContainerStyle={styles.content}
       showsVerticalScrollIndicator={false}
     >
-      <Text style={[styles.title, darkMode && styles.darkText]}>Profile</Text>
+      <Text style={[styles.title, darkMode && styles.darkText]}>{t('profile')}</Text>
       <Text style={[styles.text, darkMode && styles.darkText]}>Name: {user?.name || 'Student'}</Text>
       <Text style={[styles.text, darkMode && styles.darkText]}>Email: {user?.email || '-'}</Text>
+
+      <View style={styles.settingsCard}>
+        <Text style={styles.cardTitle}>{t('language')}</Text>
+        <View style={styles.langRow}>
+          {supportedLanguages.map((item) => {
+            const active = item.code === language;
+            return (
+              <TouchableOpacity
+                key={item.code}
+                style={[styles.langChip, active && styles.langChipActive]}
+                onPress={() => setLanguagePreference(item.code)}
+                accessibilityRole="button"
+                accessibilityLabel={`Switch language to ${item.label}`}
+              >
+                <Text style={[styles.langText, active && styles.langTextActive]}>{item.label}</Text>
+              </TouchableOpacity>
+            );
+          })}
+        </View>
+      </View>
 
       <View style={styles.statsRow}>
         <View style={styles.statCard}>
@@ -85,12 +141,86 @@ export default function ProfileScreen() {
       </View>
 
       <View style={styles.row}>
-        <Text style={[styles.text, darkMode && styles.darkText]}>Dark Mode</Text>
+        <Text style={[styles.text, darkMode && styles.darkText]}>{t('darkMode')}</Text>
         <Switch value={darkMode} onValueChange={setDarkMode} />
       </View>
 
       <View style={styles.row}>
-        <Text style={[styles.text, darkMode && styles.darkText]}>Cooking Streak</Text>
+        <Text style={[styles.text, darkMode && styles.darkText]}>{t('notifications')}</Text>
+        <Switch value={notificationsEnabled} onValueChange={handleNotificationToggle} />
+      </View>
+
+      <TouchableOpacity style={styles.orangeBtn} onPress={handleSuggestionNotification}>
+        <Text style={styles.btnText}>{t('sendSuggestion')}</Text>
+      </TouchableOpacity>
+
+      <View style={styles.settingsCard}>
+        <Text style={styles.cardTitle}>{t('accessibility')}</Text>
+        <View style={styles.rowPlain}>
+          <Text style={styles.text}>{t('largeText')}</Text>
+          <Switch
+            value={accessibilityPrefs.largeText}
+            onValueChange={(value) => setAccessibilityOption('largeText', value)}
+          />
+        </View>
+        <View style={styles.rowPlain}>
+          <Text style={styles.text}>{t('screenReader')}</Text>
+          <Switch
+            value={accessibilityPrefs.screenReaderOptimized}
+            onValueChange={(value) => setAccessibilityOption('screenReaderOptimized', value)}
+          />
+        </View>
+      </View>
+
+      <View style={styles.settingsCard}>
+        <Text style={styles.cardTitle}>{t('rewards')}</Text>
+        <Text style={styles.rewardsValue}>{rewardPoints} {t('points')} · {rewardTier} tier</Text>
+        <Text style={styles.syncMeta}>Earn points by cooking, planning, and engaging with suggestions.</Text>
+      </View>
+
+      <View style={styles.settingsCard}>
+        <Text style={styles.cardTitle}>{t('widget')}</Text>
+        <View style={styles.rowPlain}>
+          <Text style={styles.text}>Enable home-screen widget feed</Text>
+          <Switch
+            value={integrationSettings.homeWidgetEnabled}
+            onValueChange={(value) => setIntegrationOption('homeWidgetEnabled', value)}
+          />
+        </View>
+        <Text style={styles.syncMeta}>Today meal plan and random recipe widget payload is now generated from Home.</Text>
+      </View>
+
+      <View style={styles.settingsCard}>
+        <Text style={styles.cardTitle}>{t('watchCompanion')}</Text>
+        <View style={styles.rowPlain}>
+          <Text style={styles.text}>Enable watch companion sync</Text>
+          <Switch
+            value={integrationSettings.watchCompanionEnabled}
+            onValueChange={(value) => setIntegrationOption('watchCompanionEnabled', value)}
+          />
+        </View>
+        <Text style={styles.syncMeta}>{t('watchCompanionHint')}</Text>
+      </View>
+
+      <View style={styles.settingsCard}>
+        <Text style={styles.cardTitle}>{t('voiceAssistant')}</Text>
+        <View style={styles.rowPlain}>
+          <Text style={styles.text}>Enable assistant intents</Text>
+          <Switch
+            value={integrationSettings.voiceAssistantEnabled}
+            onValueChange={(value) => setIntegrationOption('voiceAssistantEnabled', value)}
+          />
+        </View>
+        <TouchableOpacity
+          style={styles.syncBtn}
+          onPress={() => Alert.alert('Assistant query', 'Try saying: What can I cook with eggs under 20 minutes?')}
+        >
+          <Text style={styles.btnText}>Test voice command</Text>
+        </TouchableOpacity>
+      </View>
+
+      <View style={styles.row}>
+        <Text style={[styles.text, darkMode && styles.darkText]}>{t('cookStreak')}</Text>
         <Text style={[styles.streakText, darkMode && styles.darkText]}>{streak} days 🔥</Text>
       </View>
 
@@ -200,6 +330,36 @@ const styles = StyleSheet.create({
     padding: 12,
     borderRadius: 10,
   },
+  rowPlain: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  settingsCard: {
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: palette.border,
+    padding: 12,
+    marginBottom: 10,
+  },
+  cardTitle: { fontWeight: '800', color: palette.primaryDark, marginBottom: 10, fontSize: 15 },
+  langRow: { flexDirection: 'row', flexWrap: 'wrap' },
+  langChip: {
+    borderWidth: 1,
+    borderColor: palette.border,
+    borderRadius: 999,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    marginRight: 8,
+    marginBottom: 8,
+    backgroundColor: '#fff',
+  },
+  langChipActive: { backgroundColor: palette.primary, borderColor: palette.primary },
+  langText: { color: palette.primaryDark, fontWeight: '700', fontSize: 12 },
+  langTextActive: { color: '#fff' },
+  rewardsValue: { color: palette.text, fontWeight: '800', fontSize: 16, marginBottom: 6 },
   statsRow: { flexDirection: 'row', justifyContent: 'space-between', marginVertical: 12 },
   statCard: {
     flex: 1,

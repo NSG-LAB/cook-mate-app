@@ -32,7 +32,6 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 
-@SuppressWarnings("null")
 @WebMvcTest(RecipeController.class)
 @AutoConfigureMockMvc(addFilters = false)
 class RecipeControllerTest {
@@ -118,6 +117,21 @@ class RecipeControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].id").value(9))
                 .andExpect(jsonPath("$[1].id").value(4));
+    }
+
+    @Test
+    void personalizedEndpointReturnsForYouSuggestions() throws Exception {
+        when(recipeService.getPersonalizedSuggestions(6)).thenReturn(List.of(
+                RecipeSummaryResponse.builder().id(3L).title("Asian Garlic Bowl").recommendationReason("Matches your recent region preference").build(),
+                RecipeSummaryResponse.builder().id(5L).title("Campus Pasta").build()
+        ));
+
+        mockMvc.perform(get("/api/recipes/personalized").param("limit", "6"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].id").value(3))
+                .andExpect(jsonPath("$[0].title").value("Asian Garlic Bowl"))
+                .andExpect(jsonPath("$[0].recommendationReason").value("Matches your recent region preference"))
+                .andExpect(jsonPath("$[1].id").value(5));
     }
 
     @Test

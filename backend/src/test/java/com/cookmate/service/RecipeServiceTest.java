@@ -6,11 +6,15 @@ import com.cookmate.dto.RecipeRemixResponse;
 import com.cookmate.dto.RecipeSummaryResponse;
 import com.cookmate.dto.RecipeUpdateRequest;
 import com.cookmate.dto.RecipeVersionResponse;
+import com.cookmate.entity.CookLogEntry;
 import com.cookmate.entity.Recipe;
 import com.cookmate.entity.RecipeModerationStatus;
 import com.cookmate.entity.RecipeVersion;
+import com.cookmate.entity.User;
+import com.cookmate.repository.CookLogRepository;
 import com.cookmate.repository.RecipeRepository;
 import com.cookmate.repository.RecipeVersionRepository;
+import com.cookmate.repository.UserRepository;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
@@ -19,7 +23,10 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.context.SecurityContextHolder;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -32,7 +39,6 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-@SuppressWarnings("null")
 @ExtendWith(MockitoExtension.class)
 class RecipeServiceTest {
 
@@ -41,6 +47,12 @@ class RecipeServiceTest {
 
     @Mock
     private RecipeVersionRepository recipeVersionRepository;
+
+    @Mock
+    private CookLogRepository cookLogRepository;
+
+    @Mock
+    private UserRepository userRepository;
 
     @InjectMocks
     private RecipeService recipeService;
@@ -206,5 +218,82 @@ class RecipeServiceTest {
         int total = recipeService.plannedSpend(List.of(1L, 2L, 3L));
 
         assertEquals(200, total);
+    }
+
+    @Test
+    void personalizedSuggestionsPrioritizeHistoryRegionAndExcludeAlreadyCooked() {
+    User user = User.builder().id(7L).email("student@example.com").name("Student").password("x").build();
+    Recipe cookedAsian = Recipe.builder()
+        .id(1L)
+        .title("Cooked Asian")
+        .region("Asian")
+        .difficulty("easy")
+        .cookTimeMinutes(12)
+        .estimatedCost(120)
+        .calories(320)
+        .imageUrl("x")
+        .videoUrl("v")
+        .ingredients(List.of("garlic", "noodles"))
+        .steps(List.of("s"))
+        .build();
+
+    CookLogEntry log = CookLogEntry.builder()
+        .id(11L)
+        .user(user)
+        .recipe(cookedAsian)
+        .cookedAt(LocalDateTime.now().minusDays(1))
+        .minutesSpent(15)
+        .build();
+
+    Recipe candidateAsian = Recipe.builder()
+        .id(2L)
+        .title("Asian Garlic Bowl")
+        .region("Asian")
+        .difficulty("easy")
+        .cookTimeMinutes(14)
+        .estimatedCost(130)
+        .calories(300)
+        .imageUrl("x")
+        .videoUrl("v")
+        .ingredients(List.of("garlic", "rice"))
+        .steps(List.of("s"))
+        .moderationStatus(RecipeModerationStatus.PUBLISHED)
+        .build();
+
+    Recipe candidateOther = Recipe.builder()
+        .id(3L)
+        .title("Mediterranean Salad")
+        .region("Mediterranean")
+        .difficulty("hard")
+        .cookTimeMinutes(30)
+        .estimatedCost(150)
+        .calories(260)
+        .imageUrl("x")
+        .videoUrl("v")
+        .ingredients(List.of("olive oil", "cucumber"))
+        .steps(List.of("s"))
+        .moderationStatus(RecipeModerationStatus.PUBLISHED)
+        .build();
+
+    SecurityContextHolder.getContext().setAuthentication(
+        new UsernamePasswordAuthenticationToken("student@example.com", "na")
+    );
+
+    when(userRepository.findByEmail("student@example.com")).thenReturn(Optional.of(user));
+    when(cookLogRepository.findTop10ByUserOrderByCookedAtDesc(user)).thenReturn(List.of(log));
+    when(recipeRepository.findByModerationStatus(eq(RecipeModerationStatus.PUBLISHED), any(Pageable.class)))
+        .thenReturn(new PageImpl<>(List.of(cookedAsian, candidateOther, candidateAsian)));
+
+    try {
+        List<RecipeSummaryResponse> results = recipeService.getPersonalizedSuggestions(2);
+
+        assertEquals(2, results.size());
+        assertEquals(2L, results.get(0).getId());
+        assertEquals(3L, results.get(1).getId());
+        assertFalse(results.stream().anyMatch(r -> r.getId().equals(1L)));
+            assertTrue(results.get(0).getRecommendationReason() != null && !results.get(0).getRecommendationReason().isBlank());
+    } finally {
+        SecurityContextHolder.clearContext();
+    }
     }
 }

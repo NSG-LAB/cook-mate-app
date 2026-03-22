@@ -32,6 +32,8 @@ export default function GroceryScreen() {
     setWaterTargetMl,
     logWater,
     resetWater,
+    mealPrepPlan,
+    optimizeMealPrepPlan,
   } = useApp();
   const [items, setItems] = useState([]);
   const [groceryPage, setGroceryPage] = useState(0);
@@ -45,6 +47,7 @@ export default function GroceryScreen() {
   const [waterTargetInput, setWaterTargetInput] = useState(String(waterTargetMl));
   const [summary, setSummary] = useState({ totalCalories: 0, recipeCount: 0, avgCalories: 0 });
   const [comparison, setComparison] = useState([]);
+  const [mealPrepBudgetInput, setMealPrepBudgetInput] = useState(String(Math.max(0, budget - spentBudget)));
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState('');
 
@@ -56,6 +59,28 @@ export default function GroceryScreen() {
   const remainingBudget = Number((budget - spentBudget).toFixed(2));
   const calorieProgress = calorieTarget > 0 ? Math.min(summary.totalCalories / calorieTarget, 1) : 0;
   const waterProgress = waterTargetMl > 0 ? Math.min(waterTodayMl / waterTargetMl, 1) : 0;
+  const calorieDelta = Math.round((summary.totalCalories || 0) - (calorieTarget || 0));
+
+  const nutritionInsight = (() => {
+    if (!summary.recipeCount) {
+      return 'Generate your grocery list to unlock personalized nutrition insights.';
+    }
+    if (calorieDelta > 250) {
+      return 'You are above your calorie target. Prefer lower-calorie picks and increase hydration.';
+    }
+    if (calorieDelta < -250) {
+      return 'You are below your calorie target. Add a dense snack or protein-rich side.';
+    }
+    return 'Great balance. Your selected meals are close to your calorie goal.';
+  })();
+
+  const prepCandidates = comparison.map((entry) => ({
+    id: entry.id,
+    title: entry.title,
+    proteinGrams: entry.proteinGrams || 0,
+    estimatedCost: entry.estimatedCost || (comparison.length ? Number((plannedSpend / comparison.length).toFixed(2)) : 0),
+    totalTimeMinutes: entry.totalTimeMinutes || 30,
+  }));
 
   const scanBarcode = () => {
     const trimmed = barcode.trim();
@@ -100,6 +125,24 @@ export default function GroceryScreen() {
   const markItemBought = (item) => {
     recordPurchasedItem(item, 0);
     setMessage('Marked as frequently bought: ' + item);
+  };
+
+  const buildMealPrepPlan = () => {
+    if (!prepCandidates.length) {
+      setMessage('Generate grocery + nutrition first to build a meal prep plan.');
+      return;
+    }
+    const maxBudget = Number(mealPrepBudgetInput);
+    if (!Number.isFinite(maxBudget) || maxBudget < 0) {
+      setMessage('Enter a valid meal prep budget.');
+      return;
+    }
+    const plan = optimizeMealPrepPlan(prepCandidates, maxBudget);
+    if (!plan.length) {
+      setMessage('No meal prep plan could be generated for the current budget.');
+      return;
+    }
+    setMessage(`Meal prep plan generated for ${plan.length} day(s).`);
   };
 
   const generate = async () => {
@@ -278,6 +321,10 @@ export default function GroceryScreen() {
         <Text style={styles.progressCaption}>
           {summary.totalCalories} / {calorieTarget} kcal ({Math.round(calorieProgress * 100)}%)
         </Text>
+        <View style={styles.insightCard}>
+          <Ionicons name="bulb-outline" size={18} color="#0F766E" />
+          <Text style={styles.insightText}>{nutritionInsight}</Text>
+        </View>
       </View>
 
       <View style={styles.summaryCard}>
@@ -355,6 +402,33 @@ export default function GroceryScreen() {
             <Text style={styles.aisleItemsText}>{Array.isArray(aisleItems) && aisleItems.length ? aisleItems.join(', ') : 'None'}</Text>
           </View>
         )) : <Text style={styles.info}>Generate list to view grouped aisles.</Text>}
+      </View>
+
+      <View style={styles.summaryCard}>
+        <Text style={styles.summaryTitle}>Meal Prep Optimizer</Text>
+        <Text style={styles.info}>Build a weekly plan from your selected recipe nutrition and budget.</Text>
+        <View style={styles.goalInputRow}>
+          <TextInput
+            value={mealPrepBudgetInput}
+            onChangeText={setMealPrepBudgetInput}
+            keyboardType="decimal-pad"
+            style={styles.input}
+            placeholder="Meal prep budget"
+          />
+          <TouchableOpacity style={styles.scanBtn} onPress={buildMealPrepPlan}>
+            <Ionicons name="calendar-outline" size={16} color="#fff" />
+            <Text style={styles.scanBtnText}>Optimize</Text>
+          </TouchableOpacity>
+        </View>
+        {mealPrepPlan.length ? mealPrepPlan.map((entry) => (
+          <View key={`${entry.day}-${entry.recipeId}`} style={styles.prepRow}>
+            <Text style={styles.prepDay}>{entry.day}</Text>
+            <View style={styles.prepMetaWrap}>
+              <Text style={styles.prepTitle}>{entry.title}</Text>
+              <Text style={styles.prepMeta}>Protein {entry.proteinGrams}g • INR {entry.estimatedCost}</Text>
+            </View>
+          </View>
+        )) : <Text style={styles.info}>No optimized plan yet.</Text>}
       </View>
     </View>
   );
@@ -471,4 +545,29 @@ const styles = StyleSheet.create({
   compareTrack: { height: 8, borderRadius: 999, backgroundColor: '#E2E8F0', overflow: 'hidden' },
   compareFill: { height: '100%', backgroundColor: '#7C3AED' },
   compareCalories: { color: '#334155', marginTop: 4, fontWeight: '700', fontSize: 12 },
+  insightCard: {
+    marginTop: 12,
+    borderRadius: 10,
+    backgroundColor: '#ECFDF5',
+    borderWidth: 1,
+    borderColor: '#A7F3D0',
+    padding: 10,
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  insightText: { color: '#065F46', marginLeft: 8, flex: 1, fontWeight: '600' },
+  prepRow: {
+    borderWidth: 1,
+    borderColor: palette.border,
+    borderRadius: 10,
+    padding: 10,
+    marginTop: 8,
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F8FAFC',
+  },
+  prepDay: { width: 78, color: '#0F172A', fontWeight: '700' },
+  prepMetaWrap: { flex: 1 },
+  prepTitle: { color: palette.text, fontWeight: '700' },
+  prepMeta: { color: '#475569', marginTop: 2, fontSize: 12 },
 });

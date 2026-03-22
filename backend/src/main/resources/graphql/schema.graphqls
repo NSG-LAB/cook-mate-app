@@ -1,0 +1,22 @@
+type Query {
+    recipeById(id: ID!): Recipe
+    allRecipes(region: String): [Recipe]
+}
+
+type Recipe {
+    id: ID!
+    title: String!
+    region: String!
+    prepTimeMinutes: Int
+    cookTimeMinutes: Int
+    difficulty: String
+    totalTimeMinutes: Int
+    estimatedCost: Int
+    imageUrl: String
+    calories: Int
+    proteinGrams: Int
+    carbsGrams: Int
+    fatGrams: Int
+    ingredients: [String]
+    steps: [String]
+}

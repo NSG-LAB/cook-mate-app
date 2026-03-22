@@ -21,11 +21,14 @@ const formatRelativeCookedAt = (isoDate) => {
 };
 
 export default function HomeScreen({ navigation }) {
-  const { budget, setBudget, selectedRecipeIds, setSelectedRecipeIds, streak } = useApp();
+  const { budget, setBudget, selectedRecipeIds, setSelectedRecipeIds, streak, t, addRewardPoints } = useApp();
   const [recipes, setRecipes] = useState([]);
+  const [personalizedRecipes, setPersonalizedRecipes] = useState([]);
   const [region, setRegion] = useState('');
   const [loading, setLoading] = useState(false);
+  const [personalizedLoading, setPersonalizedLoading] = useState(false);
   const [error, setError] = useState('');
+  const [personalizedError, setPersonalizedError] = useState('');
   const [historySummary, setHistorySummary] = useState(null);
   const [widgetMode, setWidgetMode] = useState('plan');
   const [shuffleCount, setShuffleCount] = useState(0);
@@ -46,6 +49,20 @@ export default function HomeScreen({ navigation }) {
     }
   };
 
+  const loadPersonalizedRecipes = async () => {
+    setPersonalizedLoading(true);
+    setPersonalizedError('');
+    try {
+      const { data } = await api.get('/recipes/personalized', { params: { limit: 4 } });
+      setPersonalizedRecipes(Array.isArray(data) ? data : []);
+    } catch (err) {
+      setPersonalizedRecipes([]);
+      setPersonalizedError(err?.response?.data?.message || 'Unable to load personalized picks right now.');
+    } finally {
+      setPersonalizedLoading(false);
+    }
+  };
+
   useEffect(() => {
     loadRecipes(false);
   }, [budget, region]);
@@ -60,6 +77,7 @@ export default function HomeScreen({ navigation }) {
       }
     };
     loadSummary();
+    loadPersonalizedRecipes();
   }, []);
 
   const planWidget = useMemo(() => {
@@ -136,9 +154,13 @@ export default function HomeScreen({ navigation }) {
   };
 
   const toggleSelected = (id) => {
-    setSelectedRecipeIds((prev) =>
-      prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]
-    );
+    setSelectedRecipeIds((prev) => {
+      const alreadyAdded = prev.includes(id);
+      if (!alreadyAdded) {
+        addRewardPoints(2);
+      }
+      return alreadyAdded ? prev.filter((item) => item !== id) : [...prev, id];
+    });
   };
 
   const greeting = useMemo(() => {
@@ -149,9 +171,9 @@ export default function HomeScreen({ navigation }) {
     return {
       salutation,
       headline,
-      subtitle: `🔥 ${streakDays} day streak · ₹${budget} budget focus`,
+      subtitle: `🔥 ${streakDays} day streak · ₹${budget} ${t('budgetFocus').toLowerCase()}`,
     };
-  }, [historySummary, streak, budget]);
+  }, [historySummary, streak, budget, t]);
 
   const quickActions = useMemo(
     () => [
@@ -230,12 +252,12 @@ export default function HomeScreen({ navigation }) {
 
       <View style={styles.metricRow}>
         <View style={styles.metricCard}>
-          <Text style={styles.metricLabel}>Budget Focus</Text>
+          <Text style={styles.metricLabel}>{t('budgetFocus')}</Text>
           <Text style={styles.metricValue}>₹{budget}</Text>
           <Text style={styles.metricHint}>Drag slider to re-balance</Text>
         </View>
         <View style={[styles.metricCard, styles.metricCardAccent]}>
-          <Text style={styles.metricLabel}>Recipes in Plan</Text>
+          <Text style={styles.metricLabel}>{t('recipesInPlan')}</Text>
           <Text style={styles.metricValue}>{selectedRecipeIds.length}</Text>
           <Text style={styles.metricHint}>Pin favorites for the week</Text>
         </View>
@@ -251,6 +273,8 @@ export default function HomeScreen({ navigation }) {
             style={[styles.flashBtn, loading && styles.disabledBtn]}
             onPress={() => loadRecipes(true)}
             disabled={loading}
+            accessibilityRole="button"
+            accessibilityLabel="Load quick recipe picks"
           >
             {loading ? (
               <ActivityIndicator size="small" color="#fff" />
@@ -293,6 +317,45 @@ export default function HomeScreen({ navigation }) {
           </TouchableOpacity>
         ))}
       </View>
+
+      <View style={styles.sectionHeader}>
+        <View>
+          <Text style={styles.sectionEyebrow}>{t('forYou')}</Text>
+          <Text style={styles.sectionTitle}>{t('personalizedPicks')}</Text>
+        </View>
+        <TouchableOpacity
+          style={styles.refreshBtn}
+          onPress={loadPersonalizedRecipes}
+          accessibilityRole="button"
+          accessibilityLabel="Refresh personalized recipes"
+        >
+          {personalizedLoading ? (
+            <ActivityIndicator size="small" color={palette.primaryDark} />
+          ) : (
+            <>
+              <Ionicons name="sparkles" size={16} color={palette.primaryDark} />
+              <Text style={styles.refreshText}>{t('refresh')}</Text>
+            </>
+          )}
+        </TouchableOpacity>
+      </View>
+
+      {personalizedError ? <Text style={styles.errorText}>{personalizedError}</Text> : null}
+      {personalizedRecipes.length ? (
+        <View style={styles.personalizedBlock}>
+          {personalizedRecipes.map((recipe) => (
+            <RecipeCard
+              key={`for-you-${recipe.id}`}
+              recipe={recipe}
+              onPress={() => navigation.navigate('RecipeDetail', { id: recipe.id })}
+              onToggleSelect={toggleSelected}
+              selected={selectedRecipeIds.includes(recipe.id)}
+            />
+          ))}
+        </View>
+      ) : (
+        !personalizedLoading ? <Text style={styles.emptyText}>Cook a few recipes to improve your For You feed.</Text> : null
+      )}
 
       <View style={styles.regionRow}>
         {regions.map((r) => {
@@ -440,6 +503,7 @@ const styles = StyleSheet.create({
   actionTitle: { fontSize: 15, fontWeight: '800', color: palette.text },
   actionSubtitle: { color: palette.text, fontWeight: '600', marginTop: 4 },
   actionCta: { color: palette.primaryDark, fontWeight: '700', marginTop: 8, textTransform: 'uppercase', fontSize: 11 },
+  personalizedBlock: { marginBottom: 8 },
   regionRow: { flexDirection: 'row', flexWrap: 'wrap', marginBottom: 16 },
   regionChip: {
     flexDirection: 'row',

@@ -24,4 +24,5 @@ public class RecipeSummaryResponse {
     List<String> allergens;
     List<String> dietaryTags;
     Integer ingredientMatchPercent;
+    String recommendationReason;
 }

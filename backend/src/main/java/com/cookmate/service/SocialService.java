@@ -17,7 +17,6 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.*;
-import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -162,7 +161,7 @@ public class SocialService {
             throw new IllegalArgumentException("Comment is required");
         }
 
-        Integer rating = sanitizeRating(request.getRating());
+        Integer rating = request == null ? null : sanitizeRating(request.getRating());
 
         RecipeComment comment = RecipeComment.builder()
                 .recipe(recipe)

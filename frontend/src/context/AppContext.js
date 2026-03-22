@@ -1,6 +1,10 @@
 import React, { createContext, useContext, useEffect, useMemo, useState } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as Notifications from 'expo-notifications';
+import * as Device from 'expo-device';
+import { AccessibilityInfo } from 'react-native';
 import { api, setAuthToken } from '../services/api';
+import { SUPPORTED_LANGUAGES, translate } from '../utils/i18n';
 
 const AppContext = createContext(null);
 
@@ -18,6 +22,23 @@ const WATER_TODAY_KEY = 'appWaterTodayMl';
 const WATER_TARGET_KEY = 'appWaterTargetMl';
 const CALORIE_TARGET_KEY = 'appCalorieTarget';
 const HEALTH_CONNECTIONS_KEY = 'appHealthConnections';
+const LANGUAGE_KEY = 'appLanguage';
+const REWARD_POINTS_KEY = 'appRewardPoints';
+const NOTIFICATIONS_ENABLED_KEY = 'appNotificationsEnabled';
+const ACCESSIBILITY_PREFS_KEY = 'appAccessibilityPrefs';
+const INTEGRATIONS_KEY = 'appIntegrationSettings';
+const VIEWED_RECIPES_KEY = 'appViewedRecipes';
+const DIETARY_PREFERENCES_KEY = 'appDietaryPreferences';
+const MEAL_PREP_PLAN_KEY = 'appMealPrepPlan';
+
+Notifications.setNotificationHandler({
+  handleNotification: async () => ({
+    shouldPlaySound: true,
+    shouldSetBadge: false,
+    shouldShowBanner: true,
+    shouldShowList: true,
+  }),
+});
 
 export const AppProvider = ({ children }) => {
   const [token, setToken] = useState(null);
@@ -34,6 +55,22 @@ export const AppProvider = ({ children }) => {
   const [waterTodayMl, setWaterTodayMl] = useState(0);
   const [waterTargetMl, setWaterTargetMl] = useState(2500);
   const [calorieTarget, setCalorieTarget] = useState(2200);
+  const [language, setLanguage] = useState('en');
+  const [rewardPoints, setRewardPoints] = useState(0);
+  const [notificationsEnabled, setNotificationsEnabled] = useState(false);
+  const [notificationPermission, setNotificationPermission] = useState('undetermined');
+  const [accessibilityPrefs, setAccessibilityPrefs] = useState({
+    largeText: false,
+    screenReaderOptimized: false,
+  });
+  const [integrationSettings, setIntegrationSettings] = useState({
+    homeWidgetEnabled: true,
+    watchCompanionEnabled: true,
+    voiceAssistantEnabled: true,
+  });
+  const [viewedRecipes, setViewedRecipes] = useState([]);
+  const [dietaryPreferences, setDietaryPreferences] = useState([]);
+  const [mealPrepPlan, setMealPrepPlan] = useState([]);
   const [healthConnections, setHealthConnections] = useState({
     appleHealth: false,
     googleFit: false,
@@ -44,7 +81,7 @@ export const AppProvider = ({ children }) => {
   useEffect(() => {
     const restoreSession = async () => {
       try {
-        const [storedToken, storedUser, storedIngredients, storedBudget, storedSelected, storedCooked, storedSpentBudget, storedPurchaseHistory, storedDarkMode, storedStreak, storedWaterToday, storedWaterTarget, storedCalorieTarget, storedHealthConnections] = await Promise.all([
+        const [storedToken, storedUser, storedIngredients, storedBudget, storedSelected, storedCooked, storedSpentBudget, storedPurchaseHistory, storedDarkMode, storedStreak, storedWaterToday, storedWaterTarget, storedCalorieTarget, storedHealthConnections, storedLanguage, storedRewardPoints, storedNotificationsEnabled, storedAccessibilityPrefs, storedIntegrations, storedViewedRecipes, storedDietaryPreferences, storedMealPrepPlan] = await Promise.all([
           AsyncStorage.getItem(AUTH_TOKEN_KEY),
           AsyncStorage.getItem(AUTH_USER_KEY),
           AsyncStorage.getItem(INGREDIENTS_KEY),
@@ -59,6 +96,14 @@ export const AppProvider = ({ children }) => {
           AsyncStorage.getItem(WATER_TARGET_KEY),
           AsyncStorage.getItem(CALORIE_TARGET_KEY),
           AsyncStorage.getItem(HEALTH_CONNECTIONS_KEY),
+          AsyncStorage.getItem(LANGUAGE_KEY),
+          AsyncStorage.getItem(REWARD_POINTS_KEY),
+          AsyncStorage.getItem(NOTIFICATIONS_ENABLED_KEY),
+          AsyncStorage.getItem(ACCESSIBILITY_PREFS_KEY),
+          AsyncStorage.getItem(INTEGRATIONS_KEY),
+          AsyncStorage.getItem(VIEWED_RECIPES_KEY),
+          AsyncStorage.getItem(DIETARY_PREFERENCES_KEY),
+          AsyncStorage.getItem(MEAL_PREP_PLAN_KEY),
         ]);
 
         if (storedToken) {
@@ -171,6 +216,79 @@ export const AppProvider = ({ children }) => {
             // ignore parse errors
           }
         }
+
+        if (storedLanguage) {
+          const validLanguage = SUPPORTED_LANGUAGES.some((item) => item.code === storedLanguage);
+          if (validLanguage) {
+            setLanguage(storedLanguage);
+          }
+        }
+
+        if (storedRewardPoints) {
+          const parsedPoints = Number(storedRewardPoints);
+          if (!Number.isNaN(parsedPoints)) {
+            setRewardPoints(parsedPoints);
+          }
+        }
+
+        if (storedNotificationsEnabled !== null) {
+          setNotificationsEnabled(storedNotificationsEnabled === 'true');
+        }
+
+        if (storedAccessibilityPrefs) {
+          try {
+            const parsedPrefs = JSON.parse(storedAccessibilityPrefs);
+            if (parsedPrefs && typeof parsedPrefs === 'object') {
+              setAccessibilityPrefs((prev) => ({ ...prev, ...parsedPrefs }));
+            }
+          } catch (_) {
+            // ignore parse errors
+          }
+        }
+
+        if (storedIntegrations) {
+          try {
+            const parsedIntegrations = JSON.parse(storedIntegrations);
+            if (parsedIntegrations && typeof parsedIntegrations === 'object') {
+              setIntegrationSettings((prev) => ({ ...prev, ...parsedIntegrations }));
+            }
+          } catch (_) {
+            // ignore parse errors
+          }
+        }
+
+        if (storedViewedRecipes) {
+          try {
+            const parsed = JSON.parse(storedViewedRecipes);
+            if (Array.isArray(parsed)) {
+              setViewedRecipes(parsed);
+            }
+          } catch (_) {
+            // ignore parse errors
+          }
+        }
+
+        if (storedDietaryPreferences) {
+          try {
+            const parsed = JSON.parse(storedDietaryPreferences);
+            if (Array.isArray(parsed)) {
+              setDietaryPreferences(parsed);
+            }
+          } catch (_) {
+            // ignore parse errors
+          }
+        }
+
+        if (storedMealPrepPlan) {
+          try {
+            const parsed = JSON.parse(storedMealPrepPlan);
+            if (Array.isArray(parsed)) {
+              setMealPrepPlan(parsed);
+            }
+          } catch (_) {
+            // ignore parse errors
+          }
+        }
       } finally {
         setIsBootstrapping(false);
       }
@@ -262,6 +380,62 @@ export const AppProvider = ({ children }) => {
     }
     AsyncStorage.setItem(HEALTH_CONNECTIONS_KEY, JSON.stringify(healthConnections)).catch(() => {});
   }, [healthConnections, isBootstrapping]);
+
+  useEffect(() => {
+    if (isBootstrapping) {
+      return;
+    }
+    AsyncStorage.setItem(LANGUAGE_KEY, language).catch(() => {});
+  }, [language, isBootstrapping]);
+
+  useEffect(() => {
+    if (isBootstrapping) {
+      return;
+    }
+    AsyncStorage.setItem(REWARD_POINTS_KEY, String(rewardPoints)).catch(() => {});
+  }, [rewardPoints, isBootstrapping]);
+
+  useEffect(() => {
+    if (isBootstrapping) {
+      return;
+    }
+    AsyncStorage.setItem(NOTIFICATIONS_ENABLED_KEY, String(notificationsEnabled)).catch(() => {});
+  }, [notificationsEnabled, isBootstrapping]);
+
+  useEffect(() => {
+    if (isBootstrapping) {
+      return;
+    }
+    AsyncStorage.setItem(ACCESSIBILITY_PREFS_KEY, JSON.stringify(accessibilityPrefs)).catch(() => {});
+  }, [accessibilityPrefs, isBootstrapping]);
+
+  useEffect(() => {
+    if (isBootstrapping) {
+      return;
+    }
+    AsyncStorage.setItem(INTEGRATIONS_KEY, JSON.stringify(integrationSettings)).catch(() => {});
+  }, [integrationSettings, isBootstrapping]);
+
+  useEffect(() => {
+    if (isBootstrapping) {
+      return;
+    }
+    AsyncStorage.setItem(VIEWED_RECIPES_KEY, JSON.stringify(viewedRecipes)).catch(() => {});
+  }, [viewedRecipes, isBootstrapping]);
+
+  useEffect(() => {
+    if (isBootstrapping) {
+      return;
+    }
+    AsyncStorage.setItem(DIETARY_PREFERENCES_KEY, JSON.stringify(dietaryPreferences)).catch(() => {});
+  }, [dietaryPreferences, isBootstrapping]);
+
+  useEffect(() => {
+    if (isBootstrapping) {
+      return;
+    }
+    AsyncStorage.setItem(MEAL_PREP_PLAN_KEY, JSON.stringify(mealPrepPlan)).catch(() => {});
+  }, [mealPrepPlan, isBootstrapping]);
 
   const teardownInterceptor = () => {
     if (axiosInterceptorId !== null) {
@@ -358,6 +532,88 @@ export const AppProvider = ({ children }) => {
       const next = [recipeId, ...prev.filter((id) => id !== recipeId)];
       return next.slice(0, 30);
     });
+    setRewardPoints((prev) => prev + 15);
+  };
+
+  const recordRecipeView = (recipe) => {
+    if (!recipe || recipe.id == null) {
+      return;
+    }
+    const entry = {
+      id: recipe.id,
+      title: recipe.title,
+      region: recipe.region,
+      difficulty: recipe.difficulty,
+      ingredients: Array.isArray(recipe.ingredients) ? recipe.ingredients.slice(0, 12) : [],
+      viewedAt: new Date().toISOString(),
+    };
+    setViewedRecipes((prev) => {
+      const filtered = prev.filter((item) => item.id !== entry.id);
+      return [entry, ...filtered].slice(0, 40);
+    });
+  };
+
+  const addRewardPoints = (points) => {
+    const safePoints = Number(points);
+    if (!Number.isFinite(safePoints) || safePoints <= 0) {
+      return;
+    }
+    setRewardPoints((prev) => prev + Math.round(safePoints));
+  };
+
+  const toggleDietaryPreference = (pref) => {
+    if (!pref || typeof pref !== 'string') {
+      return;
+    }
+    const normalized = pref.trim().toLowerCase();
+    if (!normalized) {
+      return;
+    }
+    setDietaryPreferences((prev) =>
+      prev.includes(normalized)
+        ? prev.filter((item) => item !== normalized)
+        : [...prev, normalized]
+    );
+  };
+
+  const optimizeMealPrepPlan = (recipes, maxBudget) => {
+    const list = Array.isArray(recipes) ? recipes : [];
+    const safeBudget = Number.isFinite(maxBudget) ? maxBudget : 0;
+    if (!list.length) {
+      setMealPrepPlan([]);
+      return [];
+    }
+
+    const sorted = [...list].sort((a, b) => {
+      const scoreA = (a.proteinGrams || 0) * 2 - (a.estimatedCost || 0) / 25 - (a.totalTimeMinutes || 0) / 10;
+      const scoreB = (b.proteinGrams || 0) * 2 - (b.estimatedCost || 0) / 25 - (b.totalTimeMinutes || 0) / 10;
+      return scoreB - scoreA;
+    });
+
+    const weekdays = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+    const plan = [];
+    let spend = 0;
+    for (let i = 0; i < weekdays.length; i++) {
+      const candidate = sorted[i % sorted.length];
+      if (!candidate) {
+        continue;
+      }
+      const cost = Number(candidate.estimatedCost || 0);
+      if (safeBudget > 0 && spend + cost > safeBudget) {
+        break;
+      }
+      spend += cost;
+      plan.push({
+        day: weekdays[i],
+        recipeId: candidate.id,
+        title: candidate.title,
+        estimatedCost: cost,
+        proteinGrams: candidate.proteinGrams || 0,
+      });
+    }
+
+    setMealPrepPlan(plan);
+    return plan;
   };
 
   const addPantryItem = (item) => {
@@ -418,6 +674,84 @@ export const AppProvider = ({ children }) => {
     setHealthConnections((prev) => ({ ...prev, lastSyncAt: new Date().toISOString() }));
   };
 
+  const setLanguagePreference = (nextLanguage) => {
+    const validLanguage = SUPPORTED_LANGUAGES.some((item) => item.code === nextLanguage);
+    if (!validLanguage) {
+      return;
+    }
+    setLanguage(nextLanguage);
+  };
+
+  const t = (key) => translate(language, key);
+
+  const requestPushPermission = async () => {
+    if (!Device.isDevice) {
+      setNotificationPermission('denied');
+      return { granted: false, reason: 'physical_device_required' };
+    }
+
+    let { status } = await Notifications.getPermissionsAsync();
+    if (status !== 'granted') {
+      const permission = await Notifications.requestPermissionsAsync();
+      status = permission.status;
+    }
+
+    setNotificationPermission(status);
+    const granted = status === 'granted';
+    setNotificationsEnabled(granted);
+    return { granted };
+  };
+
+  const disablePushNotifications = () => {
+    setNotificationsEnabled(false);
+  };
+
+  const sendSuggestionNotification = async (title = 'Meal idea for you', body = 'Your personalized recipe picks are ready.') => {
+    if (!notificationsEnabled) {
+      return false;
+    }
+    await Notifications.scheduleNotificationAsync({
+      content: {
+        title,
+        body,
+      },
+      trigger: null,
+    });
+    return true;
+  };
+
+  const setAccessibilityOption = (key, value) => {
+    if (!(key in accessibilityPrefs)) {
+      return;
+    }
+    setAccessibilityPrefs((prev) => ({ ...prev, [key]: value }));
+    if (key === 'screenReaderOptimized') {
+      AccessibilityInfo.announceForAccessibility?.(
+        value ? 'Screen reader mode enabled' : 'Screen reader mode disabled'
+      );
+    }
+  };
+
+  const setIntegrationOption = (key, value) => {
+    if (!(key in integrationSettings)) {
+      return;
+    }
+    setIntegrationSettings((prev) => ({ ...prev, [key]: value }));
+  };
+
+  const rewardTier = useMemo(() => {
+    if (rewardPoints >= 400) {
+      return 'Gold';
+    }
+    if (rewardPoints >= 200) {
+      return 'Silver';
+    }
+    if (rewardPoints >= 80) {
+      return 'Bronze';
+    }
+    return 'Starter';
+  }, [rewardPoints]);
+
   const value = useMemo(
     () => ({
       token,
@@ -456,8 +790,32 @@ export const AppProvider = ({ children }) => {
       connectHealthProvider,
       disconnectHealthProvider,
       markHealthSync,
+      language,
+      setLanguagePreference,
+      t,
+      supportedLanguages: SUPPORTED_LANGUAGES,
+      rewardPoints,
+      rewardTier,
+      addRewardPoints,
+      notificationsEnabled,
+      notificationPermission,
+      requestPushPermission,
+      disablePushNotifications,
+      sendSuggestionNotification,
+      accessibilityPrefs,
+      setAccessibilityOption,
+      integrationSettings,
+      setIntegrationOption,
+      viewedRecipes,
+      recordRecipeView,
+      dietaryPreferences,
+      setDietaryPreferences,
+      toggleDietaryPreference,
+      mealPrepPlan,
+      optimizeMealPrepPlan,
+      setMealPrepPlan,
     }),
-    [token, user, isBootstrapping, budget, ingredients, selectedRecipeIds, cookedRecipeIds, spentBudget, purchaseHistory, darkMode, streak, waterTodayMl, waterTargetMl, calorieTarget, healthConnections]
+    [token, user, isBootstrapping, budget, ingredients, selectedRecipeIds, cookedRecipeIds, spentBudget, purchaseHistory, darkMode, streak, waterTodayMl, waterTargetMl, calorieTarget, healthConnections, language, rewardPoints, rewardTier, notificationsEnabled, notificationPermission, accessibilityPrefs, integrationSettings, viewedRecipes, dietaryPreferences, mealPrepPlan]
   );
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;

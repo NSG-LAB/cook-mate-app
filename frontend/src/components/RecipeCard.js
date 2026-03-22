@@ -10,12 +10,22 @@ export default function RecipeCard({ recipe, onPress, onToggleSelect, selected }
   const allergens = Array.isArray(recipe.allergens) ? recipe.allergens.slice(0, 3) : [];
 
   return (
-    <TouchableOpacity style={[styles.card, selected && styles.cardSelected]} onPress={onPress} activeOpacity={0.9}>
+    <TouchableOpacity
+      style={[styles.card, selected && styles.cardSelected]}
+      onPress={onPress}
+      activeOpacity={0.9}
+      accessibilityRole="button"
+      accessibilityLabel={`Recipe ${recipe.title}`}
+      accessibilityHint="Opens recipe details"
+    >
       <View style={styles.header}>
         <Image source={{ uri: recipe.imageUrl }} style={styles.image} />
         <View style={styles.headerContent}>
           <Text style={styles.eyebrow}>{match}</Text>
           <Text style={styles.title} numberOfLines={2}>{recipe.title}</Text>
+          {recipe.recommendationReason ? (
+            <Text style={styles.reasonText} numberOfLines={2}>{recipe.recommendationReason}</Text>
+          ) : null}
           <View style={styles.badgeRow}>
             <Text style={styles.badge}>{(recipe.difficulty || 'easy').toUpperCase()}</Text>
             <View style={styles.timeChip}>
@@ -66,6 +76,8 @@ export default function RecipeCard({ recipe, onPress, onToggleSelect, selected }
         <TouchableOpacity
           style={[styles.selectBtn, selected && styles.selectBtnSelected]}
           onPress={() => onToggleSelect(recipe.id)}
+          accessibilityRole="button"
+          accessibilityLabel={selected ? 'Remove from plan' : 'Add to plan'}
         >
           <Ionicons
             name={selected ? 'checkmark-circle' : 'add-circle-outline'}
@@ -101,6 +113,7 @@ const styles = StyleSheet.create({
   headerContent: { flex: 1 },
   eyebrow: { textTransform: 'uppercase', letterSpacing: 0.6, fontSize: 11, color: palette.muted, fontWeight: '700' },
   title: { fontSize: 17, fontWeight: '800', color: palette.text, marginTop: 4 },
+  reasonText: { marginTop: 5, fontSize: 12, color: '#475569', fontWeight: '600' },
   badgeRow: { flexDirection: 'row', alignItems: 'center', marginTop: 8 },
   badge: {
     backgroundColor: '#FFE5D5',

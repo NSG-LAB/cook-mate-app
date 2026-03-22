@@ -13,18 +13,26 @@ import com.cookmate.dto.RecipeSummaryResponse;
 import com.cookmate.dto.RecipeUpdateRequest;
 import com.cookmate.dto.RecipeVersionResponse;
 import com.cookmate.dto.VideoStepLinkResponse;
+import com.cookmate.entity.CookLogEntry;
 import com.cookmate.entity.Recipe;
 import com.cookmate.entity.RecipeModerationStatus;
 import com.cookmate.entity.RecipeVersion;
+import com.cookmate.entity.User;
+import com.cookmate.repository.CookLogRepository;
 import com.cookmate.repository.RecipeRepository;
 import com.cookmate.repository.RecipeVersionRepository;
+import com.cookmate.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.*;
@@ -37,6 +45,8 @@ public class RecipeService {
 
     private final RecipeRepository recipeRepository;
     private final RecipeVersionRepository recipeVersionRepository;
+    private final CookLogRepository cookLogRepository;
+    private final UserRepository userRepository;
     private static final int MAX_SUGGESTION_CANDIDATES = 200;
 
     @Cacheable(cacheNames = "recipes:list", key = "#region == null || #region.isBlank() ? 'all' : #region.toLowerCase()")
@@ -91,6 +101,104 @@ public class RecipeService {
             .sorted(Comparator.comparingInt(RecipeSummaryResponse::getIngredientMatchPercent).reversed())
             .toList();
     }
+
+            @Transactional(readOnly = true)
+            public List<RecipeSummaryResponse> getPersonalizedSuggestions(Integer limitParam) {
+            int limit = Math.min(Math.max(limitParam == null ? 12 : limitParam, 1), 30);
+            Optional<User> user = resolveCurrentUserOptional();
+            if (user.isEmpty()) {
+                return fallbackPersonalized(limit, null, null, Set.of());
+            }
+
+            List<CookLogEntry> recentLogs = cookLogRepository.findTop10ByUserOrderByCookedAtDesc(user.get());
+            if (recentLogs.isEmpty()) {
+                return fallbackPersonalized(limit, null, null, Set.of());
+            }
+
+            Set<Long> cookedRecipeIds = recentLogs.stream()
+                .map(CookLogEntry::getRecipe)
+                .filter(Objects::nonNull)
+                .map(Recipe::getId)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toSet());
+
+            String preferredRegion = recentLogs.stream()
+                .map(CookLogEntry::getRecipe)
+                .filter(Objects::nonNull)
+                .map(Recipe::getRegion)
+                .filter(Objects::nonNull)
+                .collect(Collectors.groupingBy(region -> region, Collectors.counting()))
+                .entrySet().stream()
+                .max(Map.Entry.comparingByValue())
+                .map(Map.Entry::getKey)
+                .orElse(null);
+
+            Integer budgetAnchor = (int) Math.round(recentLogs.stream()
+                .map(CookLogEntry::getRecipe)
+                .filter(Objects::nonNull)
+                .map(Recipe::getEstimatedCost)
+                .filter(Objects::nonNull)
+                .mapToInt(Integer::intValue)
+                .average()
+                .orElse(0));
+
+            if (recentLogs.size() < 3) {
+                return fallbackPersonalized(limit, preferredRegion, budgetAnchor > 0 ? budgetAnchor : null, cookedRecipeIds);
+            }
+
+            Map<String, Long> regionWeights = recentLogs.stream()
+                .map(CookLogEntry::getRecipe)
+                .filter(Objects::nonNull)
+                .map(Recipe::getRegion)
+                .filter(Objects::nonNull)
+                .map(String::trim)
+                .filter(s -> !s.isBlank())
+                .map(String::toLowerCase)
+                .collect(Collectors.groupingBy(region -> region, Collectors.counting()));
+
+            Map<String, Long> difficultyWeights = recentLogs.stream()
+                .map(CookLogEntry::getRecipe)
+                .filter(Objects::nonNull)
+                .map(this::resolveDifficulty)
+                .filter(Objects::nonNull)
+                .map(String::trim)
+                .filter(s -> !s.isBlank())
+                .map(String::toLowerCase)
+                .collect(Collectors.groupingBy(diff -> diff, Collectors.counting()));
+
+            Map<String, Long> ingredientWeights = recentLogs.stream()
+                .map(CookLogEntry::getRecipe)
+                .filter(Objects::nonNull)
+                .map(Recipe::getIngredients)
+                .filter(Objects::nonNull)
+                .flatMap(List::stream)
+                .filter(Objects::nonNull)
+                .map(String::trim)
+                .filter(s -> !s.isBlank())
+                .map(String::toLowerCase)
+                .collect(Collectors.groupingBy(ingredient -> ingredient, Collectors.counting()));
+
+            double avgMinutesSpent = recentLogs.stream()
+                .map(CookLogEntry::getMinutesSpent)
+                .filter(Objects::nonNull)
+                .mapToInt(Integer::intValue)
+                .average()
+                .orElse(0);
+
+            return getPublishedSnapshot().stream()
+                .filter(recipe -> !cookedRecipeIds.contains(recipe.getId()))
+                .map(recipe -> Map.entry(recipe, personalizedScore(recipe, regionWeights, difficultyWeights, ingredientWeights, avgMinutesSpent)))
+                .sorted(Comparator
+                    .comparingDouble((Map.Entry<Recipe, Double> entry) -> entry.getValue()).reversed()
+                    .thenComparing(entry -> entry.getKey().getId(), Comparator.reverseOrder()))
+                .limit(limit)
+                .map(entry -> {
+                    Recipe recipe = entry.getKey();
+                    String reason = buildRecommendationReason(recipe, preferredRegion, ingredientWeights);
+                    return toSummaryResponse(recipe, null, reason);
+                })
+                .toList();
+            }
 
             @Cacheable(cacheNames = "recipes:cookAgain", key = "'cookAgain:' + (#cookedRecipeIds == null ? 'none' : #cookedRecipeIds.toString())")
             public List<RecipeSummaryResponse> getCookAgainSuggestions(List<Long> cookedRecipeIds) {
@@ -585,6 +693,147 @@ public class RecipeService {
         return recipeRepository.findByModerationStatus(RecipeModerationStatus.PUBLISHED, pageable).getContent();
     }
 
+    private List<RecipeSummaryResponse> fallbackPersonalized(int limit, String preferredRegion, Integer budgetAnchor, Set<Long> excludedRecipeIds) {
+        Set<String> seasonalIngredients = seasonalIngredientsFor(detectSeason());
+        return getPublishedSnapshot().stream()
+                .filter(recipe -> !excludedRecipeIds.contains(recipe.getId()))
+                .map(recipe -> Map.entry(recipe, fallbackScore(recipe, preferredRegion, budgetAnchor, seasonalIngredients)))
+                .sorted(Comparator
+                    .comparingDouble((Map.Entry<Recipe, Double> entry) -> entry.getValue()).reversed()
+                    .thenComparing(entry -> entry.getKey().getId(), Comparator.reverseOrder()))
+                .limit(limit)
+                .map(entry -> {
+                    Recipe recipe = entry.getKey();
+                    String reason = buildFallbackReason(recipe, preferredRegion, budgetAnchor, seasonalIngredients);
+                    return toSummaryResponse(recipe, null, reason);
+                })
+                .toList();
+    }
+
+    private double fallbackScore(Recipe recipe, String preferredRegion, Integer budgetAnchor, Set<String> seasonalIngredients) {
+        double regionScore = 0.0;
+        if (preferredRegion != null && !preferredRegion.isBlank() && recipe.getRegion() != null && recipe.getRegion().equalsIgnoreCase(preferredRegion)) {
+            regionScore = 4.0;
+        }
+
+        double budgetScore = 0.0;
+        int estimatedCost = safe(recipe.getEstimatedCost());
+        if (budgetAnchor != null && budgetAnchor > 0) {
+            if (estimatedCost > 0 && estimatedCost <= budgetAnchor) {
+                budgetScore = 3.0;
+            } else if (estimatedCost > 0 && estimatedCost <= Math.round(budgetAnchor * 1.2)) {
+                budgetScore = 1.5;
+            }
+        }
+
+        double seasonalScore = containsAnyIngredient(recipe, seasonalIngredients) ? 2.0 : 0.0;
+        return regionScore + budgetScore + seasonalScore;
+    }
+
+    private String buildRecommendationReason(Recipe recipe, String preferredRegion, Map<String, Long> ingredientWeights) {
+        List<String> reasons = new ArrayList<>();
+        if (preferredRegion != null && !preferredRegion.isBlank() && recipe.getRegion() != null && recipe.getRegion().equalsIgnoreCase(preferredRegion)) {
+            reasons.add("Matches your recent " + recipe.getRegion() + " preference");
+        }
+
+        List<String> ingredientHits = (recipe.getIngredients() == null ? List.<String>of() : recipe.getIngredients()).stream()
+                .map(String::trim)
+                .filter(s -> !s.isBlank())
+                .map(String::toLowerCase)
+                .filter(ingredient -> ingredientWeights.getOrDefault(ingredient, 0L) > 0)
+                .distinct()
+                .limit(2)
+                .toList();
+
+        if (!ingredientHits.isEmpty()) {
+            reasons.add("Uses ingredients you cook with often: " + String.join(", ", ingredientHits));
+        }
+
+        if (reasons.isEmpty()) {
+            reasons.add("Recommended from your recent cooking history");
+        }
+        return String.join(". ", reasons);
+    }
+
+    private String buildFallbackReason(Recipe recipe, String preferredRegion, Integer budgetAnchor, Set<String> seasonalIngredients) {
+        List<String> reasons = new ArrayList<>();
+        if (preferredRegion != null && !preferredRegion.isBlank() && recipe.getRegion() != null && recipe.getRegion().equalsIgnoreCase(preferredRegion)) {
+            reasons.add("Matches your recent region preference");
+        }
+
+        int estimatedCost = safe(recipe.getEstimatedCost());
+        if (budgetAnchor != null && budgetAnchor > 0 && estimatedCost > 0 && estimatedCost <= budgetAnchor) {
+            reasons.add("Fits your recent budget range");
+        }
+
+        if (containsAnyIngredient(recipe, seasonalIngredients)) {
+            reasons.add("Seasonal ingredient match for " + detectSeason());
+        }
+
+        if (reasons.isEmpty()) {
+            reasons.add("Recommended while we learn more from your history");
+        }
+        return String.join(". ", reasons);
+    }
+
+    private Set<String> seasonalIngredientsFor(String season) {
+        return switch (season == null ? "" : season.trim().toLowerCase()) {
+            case "spring" -> Set.of("tomato", "lemon", "cucumber", "carrot");
+            case "summer" -> Set.of("cucumber", "lemon", "tomato", "olive oil");
+            case "monsoon" -> Set.of("garlic", "chili", "onion", "ginger");
+            case "winter" -> Set.of("potato", "garlic", "pepper", "butter", "paneer");
+            default -> Set.of("tomato", "onion", "garlic", "lemon");
+        };
+    }
+
+    private double personalizedScore(
+            Recipe recipe,
+            Map<String, Long> regionWeights,
+            Map<String, Long> difficultyWeights,
+            Map<String, Long> ingredientWeights,
+            double avgMinutesSpent
+    ) {
+        String region = recipe.getRegion() == null ? "" : recipe.getRegion().trim().toLowerCase();
+        String difficulty = resolveDifficulty(recipe).trim().toLowerCase();
+
+        double regionScore = regionWeights.getOrDefault(region, 0L) * 4.0;
+        double difficultyScore = difficultyWeights.getOrDefault(difficulty, 0L) * 2.0;
+
+        double ingredientScore = (recipe.getIngredients() == null ? List.<String>of() : recipe.getIngredients()).stream()
+                .map(String::trim)
+                .filter(s -> !s.isBlank())
+                .map(String::toLowerCase)
+                .distinct()
+                .mapToDouble(ingredient -> Math.min(ingredientWeights.getOrDefault(ingredient, 0L), 2L))
+                .sum();
+
+        int cookTime = safe(recipe.getCookTimeMinutes());
+        double speedScore = avgMinutesSpent > 0 && avgMinutesSpent <= 20 && cookTime <= 20 ? 1.5 : 0.0;
+
+        return regionScore + difficultyScore + ingredientScore + speedScore;
+    }
+
+    private Optional<User> resolveCurrentUserOptional() {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication == null || authentication.getPrincipal() == null) {
+            return Optional.empty();
+        }
+
+        Object principal = authentication.getPrincipal();
+        String email;
+        if (principal instanceof UserDetails userDetails) {
+            email = userDetails.getUsername();
+        } else {
+            email = String.valueOf(principal);
+        }
+
+        if (email == null || email.isBlank()) {
+            return Optional.empty();
+        }
+
+        return userRepository.findByEmail(email);
+    }
+
     private RecipeResponse toResponse(Recipe recipe, Set<String> fridgeIngredients) {
         List<String> ingredients = recipe.getIngredients() == null ? List.of() : recipe.getIngredients();
         Integer matchPercent = computeMatchPercent(ingredients, fridgeIngredients);
@@ -628,6 +877,10 @@ public class RecipeService {
     }
 
     private RecipeSummaryResponse toSummaryResponse(Recipe recipe, Set<String> fridgeIngredients) {
+        return toSummaryResponse(recipe, fridgeIngredients, null);
+    }
+
+    private RecipeSummaryResponse toSummaryResponse(Recipe recipe, Set<String> fridgeIngredients, String recommendationReason) {
         List<String> ingredients = recipe.getIngredients() == null ? List.of() : recipe.getIngredients();
         Integer matchPercent = computeMatchPercent(ingredients, fridgeIngredients);
         int prepTime = resolvePrepMinutes(recipe);
@@ -650,6 +903,7 @@ public class RecipeService {
                 .allergens(resolveAllergens(recipe.getAllergens(), ingredients))
                 .dietaryTags(resolveDietaryTags(recipe.getDietaryTags(), ingredients))
                 .ingredientMatchPercent(matchPercent)
+                .recommendationReason(recommendationReason)
                 .build();
     }
 

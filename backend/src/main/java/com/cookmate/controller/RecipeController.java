@@ -65,6 +65,11 @@ public class RecipeController {
         return ResponseEntity.ok(recipeService.getCookAgainSuggestions(request.getRecipeIds()));
     }
 
+    @GetMapping("/personalized")
+    public ResponseEntity<List<RecipeSummaryResponse>> personalized(@RequestParam(defaultValue = "12") Integer limit) {
+        return ResponseEntity.ok(recipeService.getPersonalizedSuggestions(limit));
+    }
+
     @GetMapping("/seasonal")
     public ResponseEntity<List<RecipeSummaryResponse>> seasonal(@RequestParam(required = false) String season) {
         return ResponseEntity.ok(recipeService.getSeasonalSuggestions(season));

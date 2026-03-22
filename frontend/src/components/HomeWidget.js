@@ -19,6 +19,8 @@ export default function HomeWidget({ data, onOpen, onShuffle, mode, setMode }) {
             key={option}
             style={[styles.modeChip, mode === option && styles.modeChipActive]}
             onPress={() => setMode(option)}
+            accessibilityRole="button"
+            accessibilityLabel={`Widget mode ${MODE_LABELS[option]}`}
           >
             <Text style={[styles.modeText, mode === option && styles.modeTextActive]}>
               {MODE_LABELS[option]}
@@ -46,7 +48,12 @@ export default function HomeWidget({ data, onOpen, onShuffle, mode, setMode }) {
               <TouchableOpacity style={[styles.btn, styles.primaryBtn]} onPress={onOpen}>
                 <Text style={styles.btnText}>Open Recipe</Text>
               </TouchableOpacity>
-              <TouchableOpacity style={[styles.btn, styles.secondaryBtn]} onPress={onShuffle}>
+              <TouchableOpacity
+                style={[styles.btn, styles.secondaryBtn]}
+                onPress={onShuffle}
+                accessibilityRole="button"
+                accessibilityLabel="Shuffle widget recipe"
+              >
                 <Text style={styles.secondaryText}>Shuffle</Text>
               </TouchableOpacity>
             </View>

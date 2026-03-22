@@ -1,10 +1,15 @@
+C:\Users\sivag\Desktop\resum-detailes\own-projects\cook-mate\backend\src\main\java\com\cookmate\abtest\RecommendationABTestService.java
+C:\Users\sivag\Desktop\resum-detailes\own-projects\cook-mate\backend\src\main\java\com\cookmate\cache\RedisConfig.java
 C:\Users\sivag\Desktop\resum-detailes\own-projects\cook-mate\backend\src\main\java\com\cookmate\config\DataSeeder.java
 C:\Users\sivag\Desktop\resum-detailes\own-projects\cook-mate\backend\src\main\java\com\cookmate\config\GlobalExceptionHandler.java
 C:\Users\sivag\Desktop\resum-detailes\own-projects\cook-mate\backend\src\main\java\com\cookmate\config\JwtProperties.java
+C:\Users\sivag\Desktop\resum-detailes\own-projects\cook-mate\backend\src\main\java\com\cookmate\config\RateLimitingConfig.java
 C:\Users\sivag\Desktop\resum-detailes\own-projects\cook-mate\backend\src\main\java\com\cookmate\config\SecurityConfig.java
 C:\Users\sivag\Desktop\resum-detailes\own-projects\cook-mate\backend\src\main\java\com\cookmate\controller\AdminRecipeController.java
+C:\Users\sivag\Desktop\resum-detailes\own-projects\cook-mate\backend\src\main\java\com\cookmate\controller\AnalyticsController.java
 C:\Users\sivag\Desktop\resum-detailes\own-projects\cook-mate\backend\src\main\java\com\cookmate\controller\AuthController.java
 C:\Users\sivag\Desktop\resum-detailes\own-projects\cook-mate\backend\src\main\java\com\cookmate\controller\CookLogController.java
+C:\Users\sivag\Desktop\resum-detailes\own-projects\cook-mate\backend\src\main\java\com\cookmate\controller\IngredientPriceController.java
 C:\Users\sivag\Desktop\resum-detailes\own-projects\cook-mate\backend\src\main\java\com\cookmate\controller\RecipeController.java
 C:\Users\sivag\Desktop\resum-detailes\own-projects\cook-mate\backend\src\main\java\com\cookmate\controller\SocialController.java
 C:\Users\sivag\Desktop\resum-detailes\own-projects\cook-mate\backend\src\main\java\com\cookmate\CookmateStudentBackendApplication.java
@@ -50,6 +55,8 @@ C:\Users\sivag\Desktop\resum-detailes\own-projects\cook-mate\backend\src\main\ja
 C:\Users\sivag\Desktop\resum-detailes\own-projects\cook-mate\backend\src\main\java\com\cookmate\entity\RecipeVersion.java
 C:\Users\sivag\Desktop\resum-detailes\own-projects\cook-mate\backend\src\main\java\com\cookmate\entity\User.java
 C:\Users\sivag\Desktop\resum-detailes\own-projects\cook-mate\backend\src\main\java\com\cookmate\entity\UserFollow.java
+C:\Users\sivag\Desktop\resum-detailes\own-projects\cook-mate\backend\src\main\java\com\cookmate\graphql\GraphQLConfig.java
+C:\Users\sivag\Desktop\resum-detailes\own-projects\cook-mate\backend\src\main\java\com\cookmate\graphql\RecipeGraphqlController.java
 C:\Users\sivag\Desktop\resum-detailes\own-projects\cook-mate\backend\src\main\java\com\cookmate\repository\ChallengeParticipationRepository.java
 C:\Users\sivag\Desktop\resum-detailes\own-projects\cook-mate\backend\src\main\java\com\cookmate\repository\ContentReportRepository.java
 C:\Users\sivag\Desktop\resum-detailes\own-projects\cook-mate\backend\src\main\java\com\cookmate\repository\CookLogRepository.java
@@ -61,7 +68,11 @@ C:\Users\sivag\Desktop\resum-detailes\own-projects\cook-mate\backend\src\main\ja
 C:\Users\sivag\Desktop\resum-detailes\own-projects\cook-mate\backend\src\main\java\com\cookmate\repository\UserRepository.java
 C:\Users\sivag\Desktop\resum-detailes\own-projects\cook-mate\backend\src\main\java\com\cookmate\security\JwtAuthFilter.java
 C:\Users\sivag\Desktop\resum-detailes\own-projects\cook-mate\backend\src\main\java\com\cookmate\security\JwtService.java
+C:\Users\sivag\Desktop\resum-detailes\own-projects\cook-mate\backend\src\main\java\com\cookmate\service\AnalyticsService.java
 C:\Users\sivag\Desktop\resum-detailes\own-projects\cook-mate\backend\src\main\java\com\cookmate\service\AuthService.java
+C:\Users\sivag\Desktop\resum-detailes\own-projects\cook-mate\backend\src\main\java\com\cookmate\service\CdnVideoService.java
 C:\Users\sivag\Desktop\resum-detailes\own-projects\cook-mate\backend\src\main\java\com\cookmate\service\CookLogService.java
+C:\Users\sivag\Desktop\resum-detailes\own-projects\cook-mate\backend\src\main\java\com\cookmate\service\IngredientPriceService.java
 C:\Users\sivag\Desktop\resum-detailes\own-projects\cook-mate\backend\src\main\java\com\cookmate\service\RecipeService.java
 C:\Users\sivag\Desktop\resum-detailes\own-projects\cook-mate\backend\src\main\java\com\cookmate\service\SocialService.java
+C:\Users\sivag\Desktop\resum-detailes\own-projects\cook-mate\backend\src\main\java\com\cookmate\websocket\WebSocketConfig.java
