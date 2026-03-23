@@ -10,14 +10,12 @@
     {
       "name": "app.jwt.expiration-ms",
       "type": "java.lang.Long",
-      "description": "JWT expiration in milliseconds.",
       "sourceType": "com.cookmate.config.JwtProperties",
       "defaultValue": 0
     },
     {
       "name": "app.jwt.secret",
       "type": "java.lang.String",
-      "description": "JWT signing secret key. Use a long random value.",
       "sourceType": "com.cookmate.config.JwtProperties"
     }
   ],
