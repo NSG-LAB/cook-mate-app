@@ -215,7 +215,7 @@ Phase 5 implementation notes:
 - Accessibility improvements include screen-reader-friendly labels and a dedicated accessibility settings section (large text + screen-reader optimization toggles).
 
 ### Phase 6: Backend Enhancements
-- [ ] Analytics dashboard (most cooked, most saved, drop-off points)
+- [x] Analytics dashboard (most cooked, most saved, drop-off points) _(in progress)_
 - [ ] A/B testing hooks for recommendation algorithms
 - [ ] Ingredient price feed integration (for real cost estimates)
 - [ ] CDN-backed video streaming for recipe videos
