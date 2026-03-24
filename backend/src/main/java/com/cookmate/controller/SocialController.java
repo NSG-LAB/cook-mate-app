@@ -1,6 +1,15 @@
 package com.cookmate.controller;
 
-import com.cookmate.dto.*;
+import com.cookmate.dto.SocialChallengeResponse;
+import com.cookmate.dto.SimpleMessageResponse;
+import com.cookmate.dto.ChallengeParticipationRequest;
+import com.cookmate.dto.SocialBadgeResponse;
+import com.cookmate.dto.SocialPageResponse;
+import com.cookmate.dto.RecipeCommentResponse;
+import com.cookmate.dto.RecipeCommentRequest;
+import com.cookmate.dto.ContentReportRequest;
+import com.cookmate.dto.SocialProfileResponse;
+import com.cookmate.dto.UserSearchResponse;
 import com.cookmate.service.SocialService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;

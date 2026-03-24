@@ -39,8 +39,8 @@ class AdminRecipeControllerTest {
     @MockitoBean
     private JwtAuthFilter jwtAuthFilter;
 
-    @Test
-    void pendingEndpointReturnsPendingList() throws Exception {
+        @Test
+        void pendingEndpointReturnsPendingList() throws Exception {
         RecipeResponse pending = RecipeResponse.builder()
                 .id(42L)
                 .title("Community Curry")
@@ -54,8 +54,8 @@ class AdminRecipeControllerTest {
                 .andExpect(jsonPath("$[0].moderationStatus").value("PENDING_REVIEW"));
     }
 
-    @Test
-    void moderationEndpointUpdatesStatus() throws Exception {
+        @Test
+        void moderationEndpointUpdatesStatus() throws Exception {
         RecipeResponse approved = RecipeResponse.builder()
                 .id(5L)
                 .title("Budget Tomato Pasta")

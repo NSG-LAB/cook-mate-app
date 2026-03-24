@@ -12,6 +12,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Service;
+
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
@@ -42,17 +43,17 @@ public class SocialService {
         boolean participated = challengeParticipationRepository.existsByChallengeAndUser(challenge, currentUser);
         Recipe featured = challenge.getFeaturedRecipe();
 
-        return SocialChallengeResponse.builder()
-                .challengeId(challenge.getId())
-                .title(challenge.getTitle())
-                .description(challenge.getDescription())
-                .weekStartDate(challenge.getWeekStartDate())
-                .weekEndDate(challenge.getWeekEndDate())
-                .featuredRecipeId(featured != null ? featured.getId() : null)
-                .featuredRecipeTitle(featured != null ? featured.getTitle() : null)
-                .featuredRecipeImage(featured != null ? featured.getImageUrl() : null)
-                .participated(participated)
-                .build();
+        return new SocialChallengeResponse(
+                challenge.getId(),
+                challenge.getTitle(),
+                challenge.getDescription(),
+                challenge.getWeekStartDate(),
+                challenge.getWeekEndDate(),
+                featured != null ? featured.getId() : null,
+                featured != null ? featured.getTitle() : null,
+                featured != null ? featured.getImageUrl() : null,
+                participated
+        );
     }
 
     @Transactional
@@ -70,11 +71,14 @@ public class SocialService {
         String notes = request == null ? null : normalizeText(request.getNotes(), 500);
 
         ChallengeParticipation participation = ChallengeParticipation.builder()
-                .challenge(challenge)
-                .user(user)
-                .participatedAt(LocalDateTime.now())
-                .notes(notes)
-                .build();
+            .challenge(challenge)
+            .user(user)
+            .participatedAt(LocalDateTime.now())
+            .notes(notes)
+            .build();
+        if (participation == null) {
+            throw new IllegalArgumentException("Entity must not be null");
+        }
         challengeParticipationRepository.save(participation);
         return new SimpleMessageResponse("Challenge participation recorded");
     }
@@ -124,14 +128,14 @@ public class SocialService {
             List<RecipeComment> slice = hasNext ? rows.subList(0, safeSize) : rows;
             Long nextCursor = hasNext && !slice.isEmpty() ? slice.get(slice.size() - 1).getId() : null;
 
-            return SocialPageResponse.<RecipeCommentResponse>builder()
-                .items(slice.stream().map(this::toCommentResponse).toList())
-                .page(null)
-                .size(safeSize)
-                .totalElements(-1)
-                .hasNext(hasNext)
-                .nextCursor(nextCursor)
-                .build();
+            return new SocialPageResponse<>(
+                slice.stream().map(this::toCommentResponse).toList(),
+                null,
+                safeSize,
+                -1,
+                hasNext,
+                nextCursor
+            );
         }
 
         int safePage = Math.max(page == null ? 0 : page, 0);
@@ -140,14 +144,14 @@ public class SocialService {
         List<RecipeComment> rows = commentPage.getContent();
         Long nextCursor = commentPage.hasNext() && !rows.isEmpty() ? rows.get(rows.size() - 1).getId() : null;
 
-        return SocialPageResponse.<RecipeCommentResponse>builder()
-            .items(rows.stream().map(this::toCommentResponse).toList())
-            .page(commentPage.getNumber())
-            .size(commentPage.getSize())
-            .totalElements(commentPage.getTotalElements())
-            .hasNext(commentPage.hasNext())
-            .nextCursor(nextCursor)
-            .build();
+        return new SocialPageResponse<>(
+            rows.stream().map(this::toCommentResponse).toList(),
+            commentPage.getNumber(),
+            commentPage.getSize(),
+            commentPage.getTotalElements(),
+            commentPage.hasNext(),
+            nextCursor
+        );
     }
 
     @Transactional
@@ -171,6 +175,9 @@ public class SocialService {
                 .createdAt(LocalDateTime.now())
                 .build();
 
+        if (comment == null) {
+            throw new IllegalArgumentException("Entity must not be null");
+        }
         RecipeComment saved = recipeCommentRepository.save(comment);
         return toCommentResponse(saved);
     }
@@ -188,6 +195,9 @@ public class SocialService {
                 .status(ContentReportStatus.OPEN)
                 .createdAt(LocalDateTime.now())
                 .build();
+        if (report == null) {
+            throw new IllegalArgumentException("Entity must not be null");
+        }
         contentReportRepository.save(report);
 
         return new SimpleMessageResponse("Recipe report submitted");
@@ -206,6 +216,9 @@ public class SocialService {
                 .status(ContentReportStatus.OPEN)
                 .createdAt(LocalDateTime.now())
                 .build();
+        if (report == null) {
+            throw new IllegalArgumentException("Entity must not be null");
+        }
         contentReportRepository.save(report);
 
         return new SimpleMessageResponse("Comment report submitted");
@@ -231,18 +244,18 @@ public class SocialService {
                 .map(this::toCommentResponse)
                 .toList();
 
-        return SocialProfileResponse.builder()
-                .userId(targetUser.getId())
-                .name(targetUser.getName())
-                .email(targetUser.getEmail())
-                .followers(followers)
-                .following(following)
-                .followingByCurrentUser(followingByCurrentUser)
-                .totalCookSessions((int) cookLogRepository.countByUser(targetUser))
-                .totalComments((int) recipeCommentRepository.countByUser(targetUser))
-                .recentCooks(recentCooks)
-                .recentComments(recentComments)
-                .build();
+        return new SocialProfileResponse(
+                targetUser.getId(),
+                targetUser.getName(),
+                targetUser.getEmail(),
+                followers,
+                following,
+                followingByCurrentUser,
+                (int) cookLogRepository.countByUser(targetUser),
+                (int) recipeCommentRepository.countByUser(targetUser),
+                recentCooks,
+                recentComments
+        );
     }
 
     @Transactional(readOnly = true)
@@ -270,6 +283,9 @@ public class SocialService {
                 .following(targetUser)
                 .createdAt(LocalDateTime.now())
                 .build();
+        if (follow == null) {
+            throw new IllegalArgumentException("Entity must not be null");
+        }
         userFollowRepository.save(follow);
 
         return new SimpleMessageResponse("Now following user");
@@ -291,14 +307,14 @@ public class SocialService {
         public SocialPageResponse<UserSearchResponse> searchUsers(String query, Integer page, Integer size, Long cursor) {
         String normalized = query == null ? "" : query.trim().toLowerCase();
         if (normalized.isEmpty()) {
-            return SocialPageResponse.<UserSearchResponse>builder()
-                .items(List.of())
-                .page(page == null ? 0 : Math.max(page, 0))
-                .size(normalizePageSize(size))
-                .totalElements(0)
-                .hasNext(false)
-                .nextCursor(null)
-                .build();
+            return new SocialPageResponse<>(
+                List.of(),
+                page == null ? 0 : Math.max(page, 0),
+                normalizePageSize(size),
+                0,
+                false,
+                null
+            );
         }
 
         int safeSize = normalizePageSize(size);
@@ -309,14 +325,14 @@ public class SocialService {
             List<User> slice = hasNext ? rows.subList(0, safeSize) : rows;
             Long nextCursor = hasNext && !slice.isEmpty() ? slice.get(slice.size() - 1).getId() : null;
 
-            return SocialPageResponse.<UserSearchResponse>builder()
-                .items(slice.stream().map(this::toUserSearchResponse).toList())
-                .page(null)
-                .size(safeSize)
-                .totalElements(-1)
-                .hasNext(hasNext)
-                .nextCursor(nextCursor)
-                .build();
+            return new SocialPageResponse<>(
+                slice.stream().map(this::toUserSearchResponse).toList(),
+                null,
+                safeSize,
+                -1,
+                hasNext,
+                nextCursor
+            );
         }
 
         int safePage = Math.max(page == null ? 0 : page, 0);
@@ -325,14 +341,14 @@ public class SocialService {
         List<User> rows = userPage.getContent();
         Long nextCursor = userPage.hasNext() && !rows.isEmpty() ? rows.get(rows.size() - 1).getId() : null;
 
-        return SocialPageResponse.<UserSearchResponse>builder()
-            .items(rows.stream().map(this::toUserSearchResponse).toList())
-            .page(userPage.getNumber())
-            .size(userPage.getSize())
-            .totalElements(userPage.getTotalElements())
-            .hasNext(userPage.hasNext())
-            .nextCursor(nextCursor)
-            .build();
+        return new SocialPageResponse<>(
+            rows.stream().map(this::toUserSearchResponse).toList(),
+            userPage.getNumber(),
+            userPage.getSize(),
+            userPage.getTotalElements(),
+            userPage.hasNext(),
+            nextCursor
+        );
     }
 
     @Transactional(readOnly = true)
@@ -356,11 +372,7 @@ public class SocialService {
     }
 
     private SocialBadgeResponse badge(String code, String title, String description) {
-        return SocialBadgeResponse.builder()
-                .code(code)
-                .title(title)
-                .description(description)
-                .build();
+        return new SocialBadgeResponse(code, title, description);
     }
 
     private String extractReason(ContentReportRequest request) {
@@ -370,15 +382,15 @@ public class SocialService {
 
     private RecipeCommentResponse toCommentResponse(RecipeComment comment) {
         User user = comment.getUser();
-        return RecipeCommentResponse.builder()
-                .id(comment.getId())
-                .recipeId(comment.getRecipe() != null ? comment.getRecipe().getId() : null)
-                .userId(user != null ? user.getId() : null)
-                .userName(user != null ? user.getName() : "Unknown")
-                .comment(comment.getComment())
-                .rating(comment.getRating())
-                .createdAt(comment.getCreatedAt())
-                .build();
+        return new RecipeCommentResponse(
+                comment.getId(),
+                comment.getRecipe() != null ? comment.getRecipe().getId() : null,
+                user != null ? user.getId() : null,
+                user != null ? user.getName() : "Unknown",
+                comment.getComment(),
+                comment.getRating(),
+                comment.getCreatedAt()
+        );
     }
 
     private CookLogResponse toCookLogResponse(CookLogEntry entry) {
@@ -405,11 +417,11 @@ public class SocialService {
     }
 
     private UserSearchResponse toUserSearchResponse(User user) {
-        return UserSearchResponse.builder()
-                .userId(user.getId())
-                .email(user.getEmail())
-                .name(user.getName())
-                .build();
+        return new UserSearchResponse(
+                user.getId(),
+                user.getName(),
+                user.getEmail()
+        );
     }
 
     private int normalizePageSize(Integer size) {

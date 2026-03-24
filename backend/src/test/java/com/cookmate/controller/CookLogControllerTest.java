@@ -40,8 +40,8 @@ class CookLogControllerTest {
     @MockitoBean
     private JwtAuthFilter jwtAuthFilter;
 
-    @Test
-    void logCookEndpointPersistsEntry() throws Exception {
+        @Test
+        void logCookEndpointPersistsEntry() throws Exception {
         CookLogResponse response = CookLogResponse.builder()
                 .id(1L)
                 .recipeId(5L)
@@ -63,8 +63,8 @@ class CookLogControllerTest {
                 .andExpect(jsonPath("$.minutesSpent").value(22));
     }
 
-    @Test
-    void summaryEndpointReturnsStats() throws Exception {
+        @Test
+        void summaryEndpointReturnsStats() throws Exception {
         CookLogResponse recent = CookLogResponse.builder()
                 .id(7L)
                 .recipeId(9L)

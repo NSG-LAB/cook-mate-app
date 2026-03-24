@@ -48,8 +48,8 @@ class RecipeControllerTest {
         @MockitoBean
         private JwtAuthFilter jwtAuthFilter;
 
-    @Test
-    void updateEndpointReturnsUpdatedRecipe() throws Exception {
+        @Test
+        void updateEndpointReturnsUpdatedRecipe() throws Exception {
         RecipeUpdateRequest request = new RecipeUpdateRequest();
         request.setTitle("Updated Ramen");
         request.setDifficulty("medium");
@@ -73,8 +73,8 @@ class RecipeControllerTest {
                 .andExpect(jsonPath("$.versionNumber").value(2));
     }
 
-    @Test
-    void versionsEndpointReturnsHistoryList() throws Exception {
+        @Test
+        void versionsEndpointReturnsHistoryList() throws Exception {
         RecipeVersionResponse v1 = RecipeVersionResponse.builder()
                 .versionNumber(2)
                 .title("Updated Ramen")
@@ -104,8 +104,8 @@ class RecipeControllerTest {
                 .andExpect(jsonPath("$[1].versionNumber").value(1));
     }
 
-    @Test
-    void cookAgainEndpointReturnsCookedHistoryOrder() throws Exception {
+        @Test
+        void cookAgainEndpointReturnsCookedHistoryOrder() throws Exception {
                 RecipeSummaryResponse r1 = RecipeSummaryResponse.builder().id(9L).title("Garlic Butter Ramen").build();
                 RecipeSummaryResponse r2 = RecipeSummaryResponse.builder().id(4L).title("Chickpea Salad Bowl").build();
 
@@ -119,8 +119,8 @@ class RecipeControllerTest {
                 .andExpect(jsonPath("$[1].id").value(4));
     }
 
-    @Test
-    void personalizedEndpointReturnsForYouSuggestions() throws Exception {
+        @Test
+        void personalizedEndpointReturnsForYouSuggestions() throws Exception {
         when(recipeService.getPersonalizedSuggestions(6)).thenReturn(List.of(
                 RecipeSummaryResponse.builder().id(3L).title("Asian Garlic Bowl").recommendationReason("Matches your recent region preference").build(),
                 RecipeSummaryResponse.builder().id(5L).title("Campus Pasta").build()
@@ -134,8 +134,8 @@ class RecipeControllerTest {
                 .andExpect(jsonPath("$[1].id").value(5));
     }
 
-    @Test
-    void seasonalEndpointReturnsSeasonalRecipes() throws Exception {
+        @Test
+        void seasonalEndpointReturnsSeasonalRecipes() throws Exception {
         when(recipeService.getSeasonalSuggestions("summer")).thenReturn(List.of(
                 RecipeSummaryResponse.builder().id(2L).title("Chickpea Salad Bowl").build()
         ));
@@ -145,8 +145,8 @@ class RecipeControllerTest {
                 .andExpect(jsonPath("$[0].title").value("Chickpea Salad Bowl"));
     }
 
-    @Test
-    void weatherEndpointReturnsWeatherBasedRecipes() throws Exception {
+        @Test
+        void weatherEndpointReturnsWeatherBasedRecipes() throws Exception {
         when(recipeService.getWeatherSuggestions("cold")).thenReturn(List.of(
                 RecipeSummaryResponse.builder().id(1L).title("Garlic Butter Ramen").build()
         ));
@@ -156,8 +156,8 @@ class RecipeControllerTest {
                 .andExpect(jsonPath("$[0].title").value("Garlic Butter Ramen"));
     }
 
-    @Test
-    void occasionEndpointReturnsOccasionRecipes() throws Exception {
+        @Test
+        void occasionEndpointReturnsOccasionRecipes() throws Exception {
         when(recipeService.getOccasionSuggestions("date-night")).thenReturn(List.of(
                 RecipeSummaryResponse.builder().id(5L).title("Budget Tomato Pasta").build()
         ));
@@ -167,8 +167,8 @@ class RecipeControllerTest {
                 .andExpect(jsonPath("$[0].title").value("Budget Tomato Pasta"));
     }
 
-    @Test
-    void remixEndpointReturnsGeneratedVariation() throws Exception {
+        @Test
+        void remixEndpointReturnsGeneratedVariation() throws Exception {
         RecipeRemixRequest request = new RecipeRemixRequest();
         request.setBaseRecipeId(9L);
         request.setIngredients(List.of("egg", "noodles", "garlic"));

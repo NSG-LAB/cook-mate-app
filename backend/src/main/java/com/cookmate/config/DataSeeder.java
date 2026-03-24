@@ -1,5 +1,6 @@
 package com.cookmate.config;
 
+
 import com.cookmate.entity.Recipe;
 import com.cookmate.entity.RecipeChallenge;
 import com.cookmate.entity.User;
@@ -247,7 +248,10 @@ public class DataSeeder implements CommandLineRunner {
                                 .active(true)
                                 .build();
 
-                recipeChallengeRepository.save(challenge);
+                                if (challenge == null) {
+                                        throw new IllegalArgumentException("Challenge must not be null");
+                                }
+                                recipeChallengeRepository.save(challenge);
         }
 
         private void seedDefaultUser() {
