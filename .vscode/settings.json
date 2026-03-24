@@ -37,5 +37,13 @@
     "files.associations": {
         "frontend/node_modules/**/*.java": "plaintext",
         "**/frontend/node_modules/**/*.java": "plaintext"
-    }
+    },
+    "java.jdt.ls.java.home": "C:\\Program Files\\Java\\jdk-21",
+    "java.configuration.runtimes": [
+        {
+            "name": "JavaSE-21",
+            "path": "C:\\Program Files\\Java\\jdk-21",
+            "default": true
+        }
+    ]
 }

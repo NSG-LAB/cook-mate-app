@@ -26,6 +26,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 @WebMvcTest(CookLogController.class)
 @AutoConfigureMockMvc(addFilters = false)
+@SuppressWarnings("null")
 class CookLogControllerTest {
 
     @Autowired
