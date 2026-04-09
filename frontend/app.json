@@ -1,1 +1,20 @@
-{}
+{
+  "expo": {
+    "extra": {
+      "eas": {
+        "projectId": "38ae8ebe-7810-43d4-81fd-60ba18af9af6"
+      }
+    },
+    "owner": "nsg2006s-organization",
+    "slug": "cook-mate",
+    "android": {
+      "package": "com.nsg2006sorganization.cookmate"
+    },
+    "ios": {
+      "bundleIdentifier": "com.nsg2006sorganization.cookmate",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
+    }
+  }
+}
